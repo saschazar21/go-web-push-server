@@ -3,6 +3,9 @@ package webpush
 import (
 	"crypto/ecdh"
 	"encoding/base64"
+	"log"
+	"net/http"
+	"net/http/httptest"
 	"testing"
 
 	"github.com/stretchr/testify/assert"
@@ -31,7 +34,7 @@ func testDecodePrivateKey(enc string) (privKey *ecdh.PrivateKey, err error) {
 }
 
 // fixtures taken from Appendix A. of https://datatracker.ietf.org/doc/rfc8291/
-func TestWebPush(t *testing.T) {
+func TestWebPushFixtures(t *testing.T) {
 	t.Setenv(SKIP_PADDING_ENV, "true") // needed, because RFC8291 values are unpadded
 
 	var errMsg = "TestWebPush err = %v, wantErr = %v"
@@ -169,4 +172,111 @@ func TestWebPush(t *testing.T) {
 	resultEnc := base64.RawURLEncoding.EncodeToString(resultBuf)
 
 	assert.Equal(t, result, resultEnc)
+}
+
+func TestWebPush(t *testing.T) {
+	t.Setenv(VAPID_EXPIRY_DURATION_ENV, "300")
+	t.Setenv(VAPID_PRIVATE_KEY_ENV, `
+-----BEGIN PRIVATE KEY-----
+MEECAQAwEwYHKoZIzj0CAQYIKoZIzj0DAQcEJzAlAgEBBCCFZOAAzpzloIIUnRsT
+MK468C66gOKehSQqxUQ8+HCI/g==
+-----END PRIVATE KEY-----	
+`)
+	t.Setenv(VAPID_SUBJECT_ENV, "test@example.com")
+
+	testServer := httptest.NewServer(http.HandlerFunc(handleRequest))
+
+	defer func() {
+		testServer.Close()
+	}()
+
+	type test struct {
+		name         string
+		subscription *pushSubscription
+		wantErr      bool
+		wantReqErr   bool
+	}
+
+	tests := []test{
+		{
+			"validates",
+			&pushSubscription{
+				Endpoint:       testServer.URL,
+				ExpirationTime: 0,
+				Keys: pushSubscriptionKeys{
+					P256DH: "BPZ_GnkGFYfUcY0D0yMWcAQIuvQfV5tSw_dd7iIQktNR1dhdDflA1eQyJT-0ZSwpDO43mNbBwogEMTh7TCSkuP0",
+					Auth:   "DGv6ra1nlYgDCS1FRnbzlw",
+				},
+			},
+			false,
+			false,
+		},
+		{
+			"fails at malformatted endpoint",
+			&pushSubscription{
+				Endpoint:       "htp://push.example",
+				ExpirationTime: 0,
+				Keys: pushSubscriptionKeys{
+					P256DH: "BPZ_GnkGFYfUcY0D0yMWcAQIuvQfV5tSw_dd7iIQktNR1dhdDflA1eQyJT-0ZSwpDO43mNbBwogEMTh7TCSkuP0",
+					Auth:   "DGv6ra1nlYgDCS1FRnbzlw",
+				},
+			},
+			false,
+			true,
+		},
+		{
+			"fails at malformatted public key",
+			&pushSubscription{
+				Endpoint:       testServer.URL,
+				ExpirationTime: 0,
+				Keys: pushSubscriptionKeys{
+					P256DH: "BPZ_GnkGFYfUcY0D0yMWcAQIuvQfV5tSw_dd7iIQktNR1dhdDflA1eQyJT-0ZSwpDO43mNbBwogEMTh7TC",
+					Auth:   "DGv6ra1nlYgDCS1FRnbzlw",
+				},
+			},
+			true,
+			false,
+		},
+		{
+			"fails at malformatted auth secret",
+			&pushSubscription{
+				Endpoint:       testServer.URL,
+				ExpirationTime: 0,
+				Keys: pushSubscriptionKeys{
+					P256DH: "BPZ_GnkGFYfUcY0D0yMWcAQIuvQfV5tSw_dd7iIQktNR1dhdDflA1eQyJT-0ZSwpDO43mNbBwogEMTh7TCSkuP0",
+					Auth:   "DGv6ra1nlYgDCS1FRnbzlw153",
+				},
+			},
+			true,
+			false,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+			var res *http.Response
+			var err error
+
+			var p *webpush
+
+			if p, err = NewWebPush(tt.subscription); (err != nil) != tt.wantErr {
+				t.Errorf("TestWebPush err = %v, wantErr = %v", err, tt.wantErr)
+			}
+
+			if err == nil {
+
+				if res, err = p.Send(testStringer("hello, world"), 0); (err != nil) != tt.wantReqErr {
+					t.Errorf("TestWebPush err = %v, wantErr = %v", err, tt.wantErr)
+				}
+
+				if err == nil {
+					log.Println(res.Header)
+
+					assert.NotNil(t, res.Header.Get("Authorization"))
+					assert.Equal(t, "aes128gcm", res.Header.Get("Content-Encoding"))
+				}
+
+			}
+		})
+	}
 }

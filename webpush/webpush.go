@@ -93,6 +93,27 @@ func (p *webpush) Encrypt(plaintext fmt.Stringer) (buf []byte, err error) {
 	return append(buf, cipher...), nil
 }
 
+func (p *webpush) Send(plaintext fmt.Stringer, ttl int64, urgency ...string) (res *http.Response, err error) {
+	if len(urgency) == 0 {
+		urgency = []string{URGENCY_NORMAL}
+	}
+
+	var payload []byte
+
+	if payload, err = p.Encrypt(plaintext); err != nil {
+		return
+	}
+
+	req := WebPushRequest{
+		p.Endpoint,
+		payload,
+		ttl,
+		urgency[0],
+	}
+
+	return req.Send()
+}
+
 type webpushDetails struct {
 	authSecret []byte
 	clientKey  *ecdh.PublicKey

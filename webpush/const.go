@@ -12,3 +12,10 @@ const (
 	APPLICATION_JSON = "application/json"
 	TEXT_PLAIN       = "text/plain"
 )
+
+const (
+	URGENCY_VERY_LOW = "very-low"
+	URGENCY_LOW      = "low"
+	URGENCY_NORMAL   = "normal"
+	URGENCY_HIGH     = "high"
+)
