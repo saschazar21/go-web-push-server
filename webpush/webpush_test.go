@@ -1,0 +1,172 @@
+package webpush
+
+import (
+	"crypto/ecdh"
+	"encoding/base64"
+	"testing"
+
+	"github.com/stretchr/testify/assert"
+)
+
+type testStringer string
+
+func (s testStringer) String() string {
+	return string(s)
+}
+
+func testDecodePrivateKey(enc string) (privKey *ecdh.PrivateKey, err error) {
+	var buf []byte
+
+	if buf, err = base64.RawURLEncoding.DecodeString(enc); err != nil {
+		return
+	}
+
+	curve := ecdh.P256()
+
+	if privKey, err = curve.NewPrivateKey(buf); err != nil {
+		return
+	}
+
+	return
+}
+
+// fixtures taken from Appendix A. of https://datatracker.ietf.org/doc/rfc8291/
+func TestWebPush(t *testing.T) {
+	t.Setenv(SKIP_PADDING_ENV, "true") // needed, because RFC8291 values are unpadded
+
+	var errMsg = "TestWebPush err = %v, wantErr = %v"
+
+	var (
+		plainText = "When I grow up, I want to be a watermelon"
+		cipher    = "8pfeW0KbunFT06SuDKoJH9Ql87S1QUrdirN6GcG7sFz1y1sqLgVi1VhjVkHsUoEsbI_0LpXMuGvnzQ"
+		result    = "DGv6ra1nlYgDCS1FRnbzlwAAEABBBP4z9KsN6nGRTbVYI_c7VJSPQTBtkgcy27mlmlMoZIIgDll6e3vCYLocInmYWAmS6TlzAC8wEqKK6PBru3jl7A_yl95bQpu6cVPTpK4Mqgkf1CXztLVBSt2Ks3oZwbuwXPXLWyouBWLVWGNWQexSgSxsj_Qulcy4a-fN"
+	)
+
+	var (
+		nonce        = "4h_95klXJ5E_qnoN"
+		cek          = "oIhVW04MRdy2XN9CiKLxTg"
+		ikm          = "S4lYMb_L0FxCeq0WhDx813KgSYqU26kOyzWUdsXYyrg"
+		prk          = "09_eUZGrsvxChDCGRCdkLiDXrReGOEVeSCdCcPBSJSc"
+		sharedSecret = "kyrL1jIIOHEzg3sM2ZWRHDRB62YACZhhSlknJ672kSs"
+	)
+
+	var (
+		authSecret = "BTBZMqHH6r4Tts7J_aSIgg"
+		clientKey  = "BCVxsr7N_eNgVRqvHtD0zTZsEc6-VV-JvLexhqUzORcxaOzi6-AYWXvTBHm4bjyPjs7Vd8pZGH6SRpkNtoIAiw4"
+
+		publicKey  = "BP4z9KsN6nGRTbVYI_c7VJSPQTBtkgcy27mlmlMoZIIgDll6e3vCYLocInmYWAmS6TlzAC8wEqKK6PBru3jl7A8"
+		privateKey = "yfWPiYE-n46HLnH0KqZOF1fJJU3MYrct3AELtAQ-oRw"
+
+		salt = "DGv6ra1nlYgDCS1FRnbzlw"
+	)
+
+	var (
+		authSecretBuf   []byte
+		cekBuf          []byte
+		cipherBuf       []byte
+		clientPubKey    *ecdh.PublicKey
+		err             error
+		ikmBuf          []byte
+		nonceBuf        []byte
+		privKey         *ecdh.PrivateKey
+		prkBuf          []byte
+		resultBuf       []byte
+		saltBuf         []byte
+		sharedSecretBuf []byte
+	)
+
+	if clientPubKey, err = decodePublicKey(clientKey); err != nil {
+		t.Errorf(errMsg, err, nil)
+	}
+
+	if privKey, err = testDecodePrivateKey(privateKey); err != nil {
+		t.Errorf(errMsg, err, nil)
+	}
+
+	pubKeyCmp, _ := decodePublicKey(publicKey)
+
+	assert.Equal(t, pubKeyCmp, privKey.PublicKey())
+
+	if authSecretBuf, err = base64.RawURLEncoding.DecodeString(authSecret); err != nil {
+		t.Errorf(errMsg, err, nil)
+	}
+
+	if saltBuf, err = base64.RawURLEncoding.DecodeString(salt); err != nil {
+		t.Errorf(errMsg, err, nil)
+	}
+
+	p := &webpushDetails{
+		authSecretBuf,
+		clientPubKey,
+		privKey,
+		saltBuf,
+	}
+
+	if sharedSecretBuf, err = p.generateSharedSecret(); err != nil {
+		t.Errorf(errMsg, err, nil)
+	}
+
+	sharedSecretEnc := base64.RawURLEncoding.EncodeToString(sharedSecretBuf)
+
+	assert.Equal(t, sharedSecret, sharedSecretEnc)
+
+	if ikmBuf, err = p.generateInputKeyingMaterial(); err != nil {
+		t.Errorf(errMsg, err, nil)
+	}
+
+	ikmEnc := base64.RawURLEncoding.EncodeToString(ikmBuf)
+
+	assert.Equal(t, ikm, ikmEnc)
+
+	if prkBuf, err = p.generatePseudoRandomKey(); err != nil {
+		t.Errorf(errMsg, err, nil)
+	}
+
+	prkEnc := base64.RawURLEncoding.EncodeToString(prkBuf)
+
+	assert.Equal(t, prk, prkEnc)
+
+	if cekBuf, err = generateContentEncryptionKey(prkBuf); err != nil {
+		t.Errorf(errMsg, err, nil)
+	}
+
+	cekEnc := base64.RawURLEncoding.EncodeToString(cekBuf)
+
+	assert.Equal(t, cek, cekEnc)
+
+	if nonceBuf, err = generateNonce(prkBuf); err != nil {
+		t.Errorf(errMsg, err, nil)
+	}
+
+	nonceEnc := base64.RawURLEncoding.EncodeToString(nonceBuf)
+
+	assert.Equal(t, nonce, nonceEnc)
+
+	push := &webpush{
+		cekBuf,
+		"",
+		nonceBuf,
+		privKey.PublicKey(),
+		saltBuf,
+	}
+
+	headerBuf := push.generateEncryptionContentCodingHeader()
+
+	assert.Len(t, headerBuf, 86)
+
+	if cipherBuf, err = push.encrypt(testStringer(plainText)); err != nil {
+		t.Errorf(errMsg, err, nil)
+	}
+
+	cipherEnc := base64.RawURLEncoding.EncodeToString(cipherBuf)
+
+	assert.Equal(t, cipher, cipherEnc)
+
+	if resultBuf, err = push.Encrypt(testStringer(plainText)); err != nil {
+		t.Errorf(errMsg, err, nil)
+	}
+
+	resultEnc := base64.RawURLEncoding.EncodeToString(resultBuf)
+
+	assert.Equal(t, result, resultEnc)
+}
