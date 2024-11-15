@@ -3,38 +3,48 @@ package webpush
 import (
 	"log"
 	"net/http"
+
+	"github.com/uptrace/bun"
 )
 
 type pushSubscriptionKeys struct {
-	P256DH string `json:"p256dh" validate:"len=87"`
-	Auth   string `json:"auth" validate:"len=22"`
+	bun.BaseModel `bun:"keys"`
+
+	P256DH string `json:"p256dh" validate:"len=87" bun:"p256dh,pk"`
+	Auth   string `json:"auth" validate:"len=22" bun:"auth_secret,notnull"`
 }
 
 type pushSubscription struct {
-	Endpoint       string               `json:"endpoint" validate:"http_url"`
-	ExpirationTime float64              `json:"expirationTime,omitempty"`
-	Keys           pushSubscriptionKeys `json:"keys" validate:"required"`
+	bun.BaseModel `bun:"subscription"`
+
+	Endpoint       string  `json:"endpoint" validate:"http_url" bun:"endpoint,pk"`
+	ExpirationTime float64 `json:"expirationTime,omitempty" bun:"expiration_time"`
+
+	Keys pushSubscriptionKeys `json:"keys" validate:"required" bun:"rel:has-one,join:keys"`
 }
 
-type subscription struct {
-	ClientId     string           `json:"client_id" validate:"required"`
-	Subject      string           `json:"sub" validate:"required"`
-	Subscription pushSubscription `json:"subscription" validate:"required"`
+type recipient struct {
+	bun.BaseModel `bun:"recipient"`
+
+	ClientId string `json:"client_id" validate:"required" bun:"client_id,pk"`
+	Subject  string `json:"sub" validate:"required" bun:"id,pk"`
+
+	Subscriptions []pushSubscription `json:"subscriptions" validate:"required,dive" bun:"rel:has-many,join:subscription"`
 }
 
-func (s *subscription) Validate() (err error) {
+func (s *recipient) Validate() (err error) {
 	if err = CustomValidateStruct(s); err != nil {
 		log.Println(err)
 
-		payload := NewErrorResponse(http.StatusBadRequest, "invalid subscription contents", err.Error())
+		payload := NewErrorResponse(http.StatusBadRequest, "invalid recipient contents", err.Error())
 		return NewResponseError(payload, http.StatusBadRequest)
 	}
 
 	return
 }
 
-func ParseSubscription(r *http.Request) (sub *subscription, err error) {
-	sub = new(subscription)
+func ParseSubscription(r *http.Request) (sub *recipient, err error) {
+	sub = new(recipient)
 
 	if err = ParseBody(r, sub); err != nil {
 		log.Println(err)
@@ -42,7 +52,7 @@ func ParseSubscription(r *http.Request) (sub *subscription, err error) {
 		responseErr, ok := err.(ResponseError)
 
 		if !ok {
-			payload := NewErrorResponse(http.StatusBadRequest, "failed to decode subscription")
+			payload := NewErrorResponse(http.StatusBadRequest, "failed to decode recipient")
 			return sub, NewResponseError(payload, http.StatusBadRequest)
 		}
 

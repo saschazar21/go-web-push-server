@@ -12,61 +12,61 @@ import (
 
 func TestSubscription(t *testing.T) {
 	keys := pushSubscriptionKeys{
-		"BPZ_GnkGFYfUcY0D0yMWcAQIuvQfV5tSw_dd7iIQktNR1dhdDflA1eQyJT-0ZSwpDO43mNbBwogEMTh7TCSkuP0",
-		"DGv6ra1nlYgDCS1FRnbzlw",
+		P256DH: "BPZ_GnkGFYfUcY0D0yMWcAQIuvQfV5tSw_dd7iIQktNR1dhdDflA1eQyJT-0ZSwpDO43mNbBwogEMTh7TCSkuP0",
+		Auth:   "DGv6ra1nlYgDCS1FRnbzlw",
 	}
 
 	pushSub := pushSubscription{
-		"https://example.com",
-		0,
-		keys,
+		Endpoint:       "https://example.com",
+		ExpirationTime: 0,
+		Keys:           keys,
 	}
 
-	sub := subscription{
-		"test client",
-		"test user",
-		pushSub,
+	sub := recipient{
+		ClientId:      "test client",
+		Subject:       "test user",
+		Subscriptions: []pushSubscription{pushSub},
 	}
 
 	type test struct {
 		name    string
-		payload subscription
-		cmp     *subscription
+		payload recipient
+		cmp     *recipient
 		wantErr bool
 	}
 
 	tests := []test{
 		{
-			"validates subscription",
+			"validates recipient",
 			sub,
 			&sub,
 			false,
 		},
 		{
 			"fails to validate missing client_id",
-			subscription{
-				Subject:      "test user",
-				Subscription: pushSub,
+			recipient{
+				Subject:       "test user",
+				Subscriptions: []pushSubscription{pushSub},
 			},
 			nil,
 			true,
 		},
 		{
 			"fails to validate missing subject",
-			subscription{
-				ClientId:     "test client",
-				Subscription: pushSub,
+			recipient{
+				ClientId:      "test client",
+				Subscriptions: []pushSubscription{pushSub},
 			},
 			nil,
 			true,
 		},
 		{
 			"fails to validate missing endpoint",
-			subscription{
+			recipient{
 				ClientId: "test client",
 				Subject:  "test user",
-				Subscription: pushSubscription{
-					Keys: keys,
+				Subscriptions: []pushSubscription{
+					{Keys: keys},
 				},
 			},
 			nil,
@@ -74,12 +74,13 @@ func TestSubscription(t *testing.T) {
 		},
 		{
 			"fails to validate missing p256dh key",
-			subscription{
+			recipient{
 				ClientId: "test client",
 				Subject:  "test user",
-				Subscription: pushSubscription{
-					Keys: pushSubscriptionKeys{
+				Subscriptions: []pushSubscription{
+					{Keys: pushSubscriptionKeys{
 						Auth: keys.Auth,
+					},
 					},
 				},
 			},
@@ -88,12 +89,13 @@ func TestSubscription(t *testing.T) {
 		},
 		{
 			"fails to validate missing auth key",
-			subscription{
+			recipient{
 				ClientId: "test client",
 				Subject:  "test user",
-				Subscription: pushSubscription{
-					Keys: pushSubscriptionKeys{
+				Subscriptions: []pushSubscription{
+					{Keys: pushSubscriptionKeys{
 						P256DH: keys.P256DH,
+					},
 					},
 				},
 			},
