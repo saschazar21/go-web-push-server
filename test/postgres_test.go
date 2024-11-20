@@ -19,7 +19,9 @@ func TestPostgres(t *testing.T) {
 		t.Fatalf("TestPostgres err = %v, wantErr = %v", err, nil)
 	}
 
-	defer TerminateContainer(ctx, t)
+	t.Cleanup(func() {
+		c.Terminate(ctx)
+	})
 
 	var result int
 	var reader io.Reader

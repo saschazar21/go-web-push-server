@@ -25,18 +25,14 @@ const (
 	CWD = "../"
 )
 
-var c *postgres.PostgresContainer
-
 func CreateContainer(ctx context.Context, t *testing.T) (container *postgres.PostgresContainer, err error) {
-	if c != nil {
-		return c, err
-	}
-
 	cwd := os.Getenv("CWD")
 
 	if cwd == "" {
 		cwd = CWD
 	}
+
+	var c *postgres.PostgresContainer
 
 	if c, err = postgres.Run(
 		ctx,
@@ -65,12 +61,4 @@ func CreateContainer(ctx context.Context, t *testing.T) (container *postgres.Pos
 	container = c
 
 	return
-}
-
-func TerminateContainer(ctx context.Context, t *testing.T) {
-	if c != nil {
-		if err := c.Terminate(ctx); err != nil {
-			t.Fatalf("failed to terminate container: %v", err)
-		}
-	}
 }

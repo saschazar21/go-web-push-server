@@ -14,13 +14,15 @@ func TestConnectToDatabase(t *testing.T) {
 	ctx := context.Background()
 
 	// create test container
-	_, err := webpush_test.CreateContainer(ctx, t)
+	c, err := webpush_test.CreateContainer(ctx, t)
 
 	if err != nil {
 		t.Fatalf("TestPostgres err = %v, wantErr = %v", err, nil)
 	}
 
-	defer webpush_test.TerminateContainer(ctx, t)
+	t.Cleanup(func() {
+		c.Terminate(ctx)
+	})
 
 	t.Run("should connect to database if connection string env is set", func(t *testing.T) {
 		t.Cleanup(func() {

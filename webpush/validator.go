@@ -72,6 +72,8 @@ func validateEpochGreaterNow(fl validator.FieldLevel) bool {
 		epoch = t
 	case Epoch:
 		epoch = t.Unix()
+	case EpochMillis:
+		epoch = t.Unix()
 	case time.Time:
 		epoch = t.Unix()
 	default:
