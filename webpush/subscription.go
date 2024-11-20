@@ -44,6 +44,20 @@ type pushSubscription struct {
 	Keys pushSubscriptionKeys `json:"keys" validate:"required" bun:"rel:has-one,join:endpoint=subscription_endpoint"`
 }
 
+func (s *pushSubscription) Delete(ctx context.Context, db bun.IDB) (err error) {
+	if _, err = db.
+		NewDelete().
+		Model(s).
+		WherePK().
+		Exec(ctx); err != nil {
+		log.Println(err)
+
+		return NewResponseError(INTERNAL_SERVER_ERROR, http.StatusInternalServerError)
+	}
+
+	return
+}
+
 func (s *pushSubscription) Save(ctx context.Context, db bun.IDB) (err error) {
 	if err = s.Validate(); err != nil {
 		return
@@ -104,7 +118,7 @@ func (r *recipient) Validate() (err error) {
 	return
 }
 
-func DeleteSubscriptionsByClient(ctx context.Context, db bun.IDB, clientId, recipientId string) (err error) {
+func DeleteSubscriptionsByClient(ctx context.Context, db bun.IDB, clientId string) (err error) {
 	if _, err = db.
 		NewDelete().
 		Model(&pushSubscription{}).
@@ -128,16 +142,6 @@ func DeleteSubscriptionsByClientAndRecipient(ctx context.Context, db bun.IDB, cl
 				Where("recipient_id = ?", recipientId)
 		}).
 		Exec(ctx); err != nil {
-		log.Println(err)
-
-		return NewResponseError(INTERNAL_SERVER_ERROR, http.StatusInternalServerError)
-	}
-
-	return
-}
-
-func DeleteSubscriptionByEndpoint(ctx context.Context, db bun.IDB, endpoint string) (err error) {
-	if _, err = db.NewDelete().Model(&pushSubscription{}).Where("endpoint = ?", bun.Ident(endpoint)).Exec(ctx); err != nil {
 		log.Println(err)
 
 		return NewResponseError(INTERNAL_SERVER_ERROR, http.StatusInternalServerError)
@@ -199,6 +203,10 @@ func ParseSubscription(req *http.Request) (sub *pushSubscription, err error) {
 		}
 
 		return sub, responseErr
+	}
+
+	if err = r.Validate(); err != nil {
+		return
 	}
 
 	sub = r.Subscription

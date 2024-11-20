@@ -4,7 +4,6 @@ import (
 	"bytes"
 	"context"
 	"encoding/json"
-	"log"
 	"net/http"
 	"net/http/httptest"
 	"testing"
@@ -38,7 +37,7 @@ func TestSubscription(t *testing.T) {
 
 	type test struct {
 		name    string
-		payload recipient
+		payload any
 		cmp     *pushSubscription
 		wantErr bool
 	}
@@ -150,6 +149,12 @@ func TestSubscription(t *testing.T) {
 }
 
 func TestSubscriptionWithDB(t *testing.T) {
+	type test struct {
+		name    string
+		exec    func(ctx context.Context, conn *bun.DB, sub *pushSubscription) error
+		wantErr bool
+	}
+
 	ctx := context.Background()
 
 	keys := pushSubscriptionKeys{
@@ -172,42 +177,176 @@ func TestSubscriptionWithDB(t *testing.T) {
 		t.Fatalf("TestPostgres err = %v, wantErr = %v", err, nil)
 	}
 
-	var conn *bun.DB
-
-	if conn, err = ConnectToDatabase(); err != nil {
-		t.Errorf("TestSubscriptionWithDB err = %v, wantErr = %v", err, nil)
-	}
-
-	conn.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(true)))
-
 	t.Cleanup(func() {
 		c.Terminate(ctx)
 	})
 
-	t.Run("should save recipient to database", func(t *testing.T) {
-		t.Cleanup(func() {
-			if err := c.Restore(ctx); err != nil {
+	tests := []test{
+		{
+			"should fetch recipient from database",
+			func(ctx context.Context, conn *bun.DB, sub *pushSubscription) (err error) {
+				if err = sub.Save(ctx, conn); err != nil {
+					return
+				}
+
+				var result []pushSubscription
+
+				result, err = GetSubscriptionsByClientAndRecipient(ctx, conn, sub.ClientId, sub.RecipientId)
+
+				if err != nil {
+					return
+				}
+
+				r := result[0]
+
+				assert.Equal(t, pushSub.ClientId, r.ClientId)
+				assert.Equal(t, pushSub.RecipientId, r.RecipientId)
+				assert.Equal(t, pushSub.Endpoint, r.Endpoint)
+				assert.Equal(t, pushSub.Keys.P256DH, r.Keys.P256DH)
+
+				if err = r.Delete(ctx, conn); err != nil {
+					return
+				}
+
+				return
+			},
+			false,
+		},
+		{
+			"should delete recipient from database",
+			func(ctx context.Context, conn *bun.DB, sub *pushSubscription) (err error) {
+				if err = sub.Save(ctx, conn); err != nil {
+					return
+				}
+
+				var result []pushSubscription
+
+				result, err = GetSubscriptionsByClient(ctx, conn, sub.ClientId)
+
+				if err != nil {
+					return
+				}
+
+				r := result[0]
+
+				assert.Equal(t, pushSub.ClientId, r.ClientId)
+				assert.Equal(t, pushSub.RecipientId, r.RecipientId)
+				assert.Equal(t, pushSub.Endpoint, r.Endpoint)
+				assert.Equal(t, pushSub.Keys.P256DH, r.Keys.P256DH)
+
+				if err = DeleteSubscriptionsByClient(ctx, conn, sub.ClientId); err != nil {
+					return
+				}
+
+				return
+			},
+			false,
+		},
+		{
+			"should delete recipient by client id and recipient id from database",
+			func(ctx context.Context, conn *bun.DB, sub *pushSubscription) (err error) {
+				if err = sub.Save(ctx, conn); err != nil {
+					return
+				}
+
+				var result []pushSubscription
+
+				result, err = GetSubscriptionsByClient(ctx, conn, sub.ClientId)
+
+				if err != nil {
+					return
+				}
+
+				r := result[0]
+
+				assert.Equal(t, pushSub.ClientId, r.ClientId)
+				assert.Equal(t, pushSub.RecipientId, r.RecipientId)
+				assert.Equal(t, pushSub.Endpoint, r.Endpoint)
+				assert.Equal(t, pushSub.Keys.P256DH, r.Keys.P256DH)
+
+				if err = DeleteSubscriptionsByClientAndRecipient(ctx, conn, sub.ClientId, sub.RecipientId); err != nil {
+					return
+				}
+
+				return
+			},
+			false,
+		},
+		{
+			"should save recipient without id to database",
+			func(ctx context.Context, conn *bun.DB, sub *pushSubscription) (err error) {
+				cp := *sub
+				cp.RecipientId = ""
+
+				if err = cp.Save(ctx, conn); err != nil {
+					return
+				}
+
+				var result []pushSubscription
+
+				result, err = GetSubscriptionsByClient(ctx, conn, sub.ClientId)
+
+				if err != nil {
+					return
+				}
+
+				r := result[0]
+
+				assert.Equal(t, pushSub.ClientId, r.ClientId)
+				assert.Equal(t, pushSub.Endpoint, r.Endpoint)
+				assert.Equal(t, pushSub.Keys.P256DH, r.Keys.P256DH)
+				assert.NotEmpty(t, r.RecipientId)
+
+				if err = DeleteSubscriptionsByClient(ctx, conn, sub.ClientId); err != nil {
+					return
+				}
+
+				return
+			},
+			false,
+		},
+		{
+			"fails to store recipient with missing client id in database",
+			func(ctx context.Context, conn *bun.DB, sub *pushSubscription) (err error) {
+				cp := *sub
+				cp.ClientId = ""
+
+				if err = cp.Save(ctx, conn); err != nil {
+					return
+				}
+
+				return
+			},
+			true,
+		},
+	}
+
+	for _, tt := range tests {
+		t.Run(tt.name, func(t *testing.T) {
+
+			var conn *bun.DB
+
+			t.Cleanup(func() {
+				if err := conn.Close(); err != nil {
+					t.Fatalf("TestSubscriptionWithDB err = %v, wantErr = %v", err, nil)
+				}
+
+				if err := c.Restore(ctx); err != nil {
+					t.Fatalf("TestSubscriptionWithDB err = %v, wantErr = %v", err, nil)
+				}
+			})
+
+			if conn, err = ConnectToDatabase(); err != nil {
 				t.Errorf("TestSubscriptionWithDB err = %v, wantErr = %v", err, nil)
 			}
+
+			conn.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(true)))
+
+			err := tt.exec(ctx, conn, &pushSub)
+
+			if (err != nil) != tt.wantErr {
+				t.Errorf("TestSubscriptionWithDB err = %v, wantErr = %v", err, tt.wantErr)
+			}
 		})
-
-		if err = pushSub.Save(ctx, conn); err != nil {
-			t.Errorf("TestSubscriptionWithDB err = %v, wantErr = %v", err, nil)
-		}
-
-		result, resultErr := GetSubscriptionsByClientAndRecipient(ctx, conn, pushSub.ClientId, pushSub.RecipientId)
-
-		if resultErr != nil {
-			t.Errorf("TestSubscriptionWithDB err = %v, wantErr = %v", resultErr, nil)
-		}
-
-		r := result[0]
-
-		log.Println(r)
-
-		assert.Equal(t, pushSub.ClientId, r.ClientId)
-		assert.Equal(t, pushSub.RecipientId, r.RecipientId)
-		assert.Equal(t, pushSub.Endpoint, r.Endpoint)
-		assert.Equal(t, pushSub.Keys.P256DH, r.Keys.P256DH)
-	})
+	}
 }
