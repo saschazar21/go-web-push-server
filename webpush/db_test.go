@@ -36,17 +36,17 @@ func TestConnectToDatabase(t *testing.T) {
 
 		var res sql.Result
 
-		if res, err = conn.Exec("INSERT INTO recipient (id, client_id) VALUES ('123', '123') RETURNING id, client_id"); err != nil {
+		if res, err = conn.Exec("INSERT INTO subscription (endpoint, expiration_time, client_id, recipient_id) VALUES ('https://push.example.com', '2024-11-20', '123', '123') RETURNING recipient_id, client_id"); err != nil {
 			t.Errorf("TestPostgres err = %v, wantErr = %v", err, nil)
 		}
 
 		assert.NotNil(t, res)
 
 		type testRecipient struct {
-			bun.BaseModel `bun:"table:recipient"`
+			bun.BaseModel `bun:"table:subscription"`
 
-			ID       string `bun:"id,pk"`
-			ClientId string `bun:"client_id,pk"`
+			ClientId    string `bun:"client_id,pk"`
+			RecipientId string `bun:"recipient_id,pk"`
 		}
 
 		var r testRecipient
@@ -55,7 +55,7 @@ func TestConnectToDatabase(t *testing.T) {
 			t.Errorf("TestPostgres err = %v, wantErr = %v", err, nil)
 		}
 
-		assert.Equal(t, "123", r.ID)
+		assert.Equal(t, "123", r.RecipientId)
 		assert.Equal(t, "123", r.ClientId)
 	})
 

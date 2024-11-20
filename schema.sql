@@ -1,19 +1,9 @@
--- Create the recipients table with a composite primary key
-CREATE TABLE recipient (
-  id VARCHAR(255),
-  client_id VARCHAR(255),
-  PRIMARY KEY (id, client_id)
-);
-
 -- Create the subscriptions table with a many-to-one relation to recipients
 CREATE TABLE subscription (
   endpoint VARCHAR(255) PRIMARY KEY,
   expiration_time TIMESTAMPTZ,
-  recipient_id VARCHAR(255),
-  client_id VARCHAR(255),
-  FOREIGN KEY (recipient_id, client_id) REFERENCES recipient(id, client_id) ON
-  DELETE
-    CASCADE
+  client_id VARCHAR(255) NOT NULL,
+  recipient_id VARCHAR(255) NOT NULL
 );
 
 -- Create the keys table with a one-to-one relation to subscriptions

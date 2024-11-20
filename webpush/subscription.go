@@ -38,12 +38,10 @@ type pushSubscription struct {
 
 	Endpoint       string       `json:"endpoint" validate:"http_url" bun:"endpoint,pk"`
 	ExpirationTime *EpochMillis `json:"expirationTime,omitempty" validate:"omitempty,epoch-gt-now" bun:"expiration_time,nullzero"`
-	ClientId       string       `json:"-" validate:"required" bun:"client_id,notnull"`
-	RecipientId    string       `json:"-" bun:"recipient_id,notnull"`
+	ClientId       string       `json:"clientId" validate:"required" bun:"client_id,notnull"`
+	RecipientId    string       `json:"recipientId" bun:"recipient_id,notnull"`
 
 	Keys pushSubscriptionKeys `json:"keys" validate:"required" bun:"rel:has-one,join:endpoint=subscription_endpoint"`
-
-	recipient *recipient `bun:"rel:belongs-to,join:client_id=client_id,join:recipient_id=id"`
 }
 
 func (s *pushSubscription) Save(ctx context.Context, db bun.IDB) (err error) {
@@ -51,22 +49,8 @@ func (s *pushSubscription) Save(ctx context.Context, db bun.IDB) (err error) {
 		return
 	}
 
-	if s.recipient == nil {
-		s.recipient = &recipient{
-			ClientId:     s.ClientId,
-			RecipientId:  s.RecipientId,
-			Subscription: s,
-		}
-	}
-
 	if s.RecipientId == "" {
 		s.RecipientId = fmt.Sprintf("anonymous_%s", xid.New().String())
-
-		s.recipient.RecipientId = s.RecipientId
-	}
-
-	if err = s.recipient.Save(ctx, db); err != nil {
-		return
 	}
 
 	s.Keys.Endpoint = s.Endpoint
@@ -103,24 +87,10 @@ func (s *pushSubscription) Validate() (err error) {
 type recipient struct {
 	bun.BaseModel `bun:"table:recipient,alias:r"`
 
-	ClientId    string `json:"clientId" validate:"required" bun:"client_id,pk"`
-	RecipientId string `json:"id" validate:"required" bun:"id,pk"`
+	ClientId    string `json:"clientId" validate:"required"`
+	RecipientId string `json:"id"`
 
-	Subscription *pushSubscription `json:"subscription" validate:"required" bun:"-"`
-}
-
-func (r *recipient) Save(ctx context.Context, db bun.IDB) (err error) {
-	if err = r.Validate(); err != nil {
-		return
-	}
-
-	if _, err = db.NewInsert().Model(r).Ignore().Exec(ctx); err != nil {
-		log.Println(err)
-
-		return NewResponseError(INTERNAL_SERVER_ERROR, http.StatusInternalServerError)
-	}
-
-	return
+	Subscription *pushSubscription `json:"subscription" validate:"required"`
 }
 
 func (r *recipient) Validate() (err error) {
