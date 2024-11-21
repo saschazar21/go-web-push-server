@@ -4,6 +4,8 @@ import (
 	"database/sql"
 	"database/sql/driver"
 	"fmt"
+	"log"
+	"net/http"
 	"strconv"
 	"time"
 )
@@ -11,6 +13,35 @@ import (
 type StringerValidator interface {
 	String() string
 	Validate() error
+}
+
+type recipientKeys struct {
+	P256DH string `json:"p256dh" validate:"len=87"`
+	Auth   string `json:"auth" validate:"len=22"`
+}
+
+type recipientSubscription struct {
+	Endpoint       string         `json:"endpoint" validate:"http_url"`
+	ExpirationTime *EpochMillis   `json:"expirationTime,omitempty"`
+	Keys           *recipientKeys `json:"keys" validate:"required"`
+}
+
+type recipient struct {
+	ClientId    string `json:"clientId" validate:"required"`
+	RecipientId string `json:"id"`
+
+	Subscription *recipientSubscription `json:"subscription" validate:"required"`
+}
+
+func (r *recipient) Validate() (err error) {
+	if err = CustomValidateStruct(r); err != nil {
+		log.Println(err)
+
+		payload := NewErrorResponse(http.StatusBadRequest, "invalid recipient contents", err.Error())
+		return NewResponseError(payload, http.StatusBadRequest)
+	}
+
+	return
 }
 
 type Epoch struct {

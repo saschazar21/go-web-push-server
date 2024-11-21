@@ -204,7 +204,7 @@ MK468C66gOKehSQqxUQ8+HCI/g==
 			&pushSubscription{
 				Endpoint:       testServer.URL,
 				ExpirationTime: &EpochMillis{time.Time(time.Now().Add(time.Hour))},
-				Keys: pushSubscriptionKeys{
+				Keys: &pushSubscriptionKeys{
 					P256DH: "BPZ_GnkGFYfUcY0D0yMWcAQIuvQfV5tSw_dd7iIQktNR1dhdDflA1eQyJT-0ZSwpDO43mNbBwogEMTh7TCSkuP0",
 					Auth:   "DGv6ra1nlYgDCS1FRnbzlw",
 				},
@@ -217,7 +217,7 @@ MK468C66gOKehSQqxUQ8+HCI/g==
 			&pushSubscription{
 				Endpoint:       "htp://push.example",
 				ExpirationTime: &EpochMillis{time.Time(time.Now().Add(time.Hour))},
-				Keys: pushSubscriptionKeys{
+				Keys: &pushSubscriptionKeys{
 					P256DH: "BPZ_GnkGFYfUcY0D0yMWcAQIuvQfV5tSw_dd7iIQktNR1dhdDflA1eQyJT-0ZSwpDO43mNbBwogEMTh7TCSkuP0",
 					Auth:   "DGv6ra1nlYgDCS1FRnbzlw",
 				},
@@ -230,7 +230,7 @@ MK468C66gOKehSQqxUQ8+HCI/g==
 			&pushSubscription{
 				Endpoint:       testServer.URL,
 				ExpirationTime: &EpochMillis{time.Time(time.Now().Add(time.Hour))},
-				Keys: pushSubscriptionKeys{
+				Keys: &pushSubscriptionKeys{
 					P256DH: "BPZ_GnkGFYfUcY0D0yMWcAQIuvQfV5tSw_dd7iIQktNR1dhdDflA1eQyJT-0ZSwpDO43mNbBwogEMTh7TC",
 					Auth:   "DGv6ra1nlYgDCS1FRnbzlw",
 				},
@@ -243,7 +243,7 @@ MK468C66gOKehSQqxUQ8+HCI/g==
 			&pushSubscription{
 				Endpoint:       testServer.URL,
 				ExpirationTime: &EpochMillis{time.Time(time.Now().Add(time.Hour))},
-				Keys: pushSubscriptionKeys{
+				Keys: &pushSubscriptionKeys{
 					P256DH: "BPZ_GnkGFYfUcY0D0yMWcAQIuvQfV5tSw_dd7iIQktNR1dhdDflA1eQyJT-0ZSwpDO43mNbBwogEMTh7TCSkuP0",
 					Auth:   "DGv6ra1nlYgDCS1FRnbzlw153",
 				},

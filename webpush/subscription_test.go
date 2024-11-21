@@ -16,17 +16,15 @@ import (
 )
 
 func TestSubscription(t *testing.T) {
-	keys := pushSubscriptionKeys{
+	keys := recipientKeys{
 		P256DH: "BPZ_GnkGFYfUcY0D0yMWcAQIuvQfV5tSw_dd7iIQktNR1dhdDflA1eQyJT-0ZSwpDO43mNbBwogEMTh7TCSkuP0",
 		Auth:   "DGv6ra1nlYgDCS1FRnbzlw",
 	}
 
-	pushSub := pushSubscription{
-		ClientId:       "test client",
-		RecipientId:    "test user",
+	pushSub := recipientSubscription{
 		Endpoint:       "https://example.com",
 		ExpirationTime: &EpochMillis{time.Time(time.Now().Add(time.Hour))},
-		Keys:           keys,
+		Keys:           &keys,
 	}
 
 	sub := recipient{
@@ -46,7 +44,13 @@ func TestSubscription(t *testing.T) {
 		{
 			"validates recipient",
 			sub,
-			&pushSub,
+			&pushSubscription{
+				ClientId:       "test client",
+				RecipientId:    "test user",
+				Endpoint:       "https://example.com",
+				ExpirationTime: pushSub.ExpirationTime,
+				Keys:           &pushSubscriptionKeys{P256DH: keys.P256DH, Auth: keys.Auth},
+			},
 			false,
 		},
 		{
@@ -59,7 +63,7 @@ func TestSubscription(t *testing.T) {
 				ClientId:       "test client",
 				Endpoint:       "https://example.com",
 				ExpirationTime: &EpochMillis{time.Time(time.Now().Add(time.Hour))},
-				Keys:           keys,
+				Keys:           &pushSubscriptionKeys{P256DH: keys.P256DH, Auth: keys.Auth},
 			},
 			false,
 		},
@@ -77,9 +81,9 @@ func TestSubscription(t *testing.T) {
 			recipient{
 				ClientId:    "test client",
 				RecipientId: "test user",
-				Subscription: &pushSubscription{
+				Subscription: &recipientSubscription{
 					ExpirationTime: &EpochMillis{time.Time(time.Now().Add(time.Hour))},
-					Keys:           keys,
+					Keys:           &keys,
 				},
 			},
 			nil,
@@ -90,10 +94,10 @@ func TestSubscription(t *testing.T) {
 			recipient{
 				ClientId:    "test client",
 				RecipientId: "test user",
-				Subscription: &pushSubscription{
+				Subscription: &recipientSubscription{
 					Endpoint:       "https://example.com",
 					ExpirationTime: &EpochMillis{time.Time(time.Now().Add(time.Hour))},
-					Keys: pushSubscriptionKeys{
+					Keys: &recipientKeys{
 						Auth: keys.Auth,
 					},
 				},
@@ -106,10 +110,10 @@ func TestSubscription(t *testing.T) {
 			recipient{
 				ClientId:    "test client",
 				RecipientId: "test user",
-				Subscription: &pushSubscription{
+				Subscription: &recipientSubscription{
 					Endpoint:       "https://example.com",
 					ExpirationTime: &EpochMillis{time.Time(time.Now().Add(time.Hour))},
-					Keys: pushSubscriptionKeys{
+					Keys: &recipientKeys{
 						P256DH: keys.P256DH,
 					},
 				},
@@ -165,7 +169,7 @@ func TestSubscriptionWithDB(t *testing.T) {
 	pushSub := pushSubscription{
 		Endpoint:       "https://example.com",
 		ExpirationTime: &EpochMillis{time.Time(time.Now().Add(time.Hour))},
-		Keys:           keys,
+		Keys:           &keys,
 
 		ClientId:    "test client",
 		RecipientId: "test user",

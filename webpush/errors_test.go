@@ -193,7 +193,7 @@ func TestResponseError(t *testing.T) {
 
 			responseErr, _ := err.(ResponseError)
 
-			responseErr.Response(w)
+			responseErr.Write(w)
 
 			assert.Equal(t, tt.cmp.StatusCode, w.Code)
 			assert.Equal(t, []byte(tt.cmp.Body), (*w.Body).Bytes())

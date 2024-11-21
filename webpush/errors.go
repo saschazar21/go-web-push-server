@@ -108,7 +108,7 @@ func (err ResponseError) Error() (s string) {
 	return fmt.Sprintf("[HTTP %d]: %s", err.StatusCode, err.Body)
 }
 
-func (err ResponseError) Response(w http.ResponseWriter) {
+func (err ResponseError) Write(w http.ResponseWriter) {
 	if err.Headers != nil {
 		for key, value := range err.Headers {
 			w.Header().Add(key, strings.Join(value, ","))
@@ -152,4 +152,25 @@ func NewResponseError(contents StringerValidator, status int, headers ...http.He
 		headers[0],
 		status,
 	}
+}
+
+func WriteResponseError(w http.ResponseWriter, err error, fallback ...error) {
+	responseErr, ok := err.(ResponseError)
+
+	if !ok {
+		if len(fallback) > 0 {
+			responseErr, ok = fallback[0].(ResponseError)
+
+			if !ok {
+				responseErr = NewResponseError(INTERNAL_SERVER_ERROR, http.StatusInternalServerError).(ResponseError)
+			}
+
+		} else {
+			log.Println(err)
+
+			responseErr = NewResponseError(INTERNAL_SERVER_ERROR, http.StatusInternalServerError).(ResponseError)
+		}
+	}
+
+	responseErr.Write(w)
 }

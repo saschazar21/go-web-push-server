@@ -20,7 +20,7 @@ type pushSubscriptionKeys struct {
 }
 
 func (k *pushSubscriptionKeys) Save(ctx context.Context, db bun.IDB) (err error) {
-	if _, err = db.NewInsert().Model(k).Ignore().Exec(ctx); err != nil {
+	if _, err = db.NewInsert().Model(k).Exec(ctx); err != nil {
 		log.Println(err)
 
 		return NewResponseError(INTERNAL_SERVER_ERROR, http.StatusInternalServerError)
@@ -41,7 +41,7 @@ type pushSubscription struct {
 	ClientId       string       `json:"clientId" validate:"required" bun:"client_id,notnull"`
 	RecipientId    string       `json:"recipientId" bun:"recipient_id,notnull"`
 
-	Keys pushSubscriptionKeys `json:"keys" validate:"required" bun:"rel:has-one,join:endpoint=subscription_endpoint"`
+	Keys *pushSubscriptionKeys `json:"keys" validate:"required" bun:"rel:has-one,join:endpoint=subscription_endpoint"`
 }
 
 func (s *pushSubscription) Delete(ctx context.Context, db bun.IDB) (err error) {
@@ -69,7 +69,7 @@ func (s *pushSubscription) Save(ctx context.Context, db bun.IDB) (err error) {
 
 	s.Keys.Endpoint = s.Endpoint
 
-	if _, err = db.NewInsert().Model(s).Ignore().Exec(ctx); err != nil {
+	if _, err = db.NewInsert().Model(s).Exec(ctx); err != nil {
 		log.Println(err)
 
 		return NewResponseError(INTERNAL_SERVER_ERROR, http.StatusInternalServerError)
@@ -92,26 +92,6 @@ func (s *pushSubscription) Validate() (err error) {
 		log.Println(err)
 
 		payload := NewErrorResponse(http.StatusBadRequest, "invalid subscription contents", err.Error())
-		return NewResponseError(payload, http.StatusBadRequest)
-	}
-
-	return
-}
-
-type recipient struct {
-	bun.BaseModel `bun:"table:recipient,alias:r"`
-
-	ClientId    string `json:"clientId" validate:"required"`
-	RecipientId string `json:"id"`
-
-	Subscription *pushSubscription `json:"subscription" validate:"required"`
-}
-
-func (r *recipient) Validate() (err error) {
-	if err = CustomValidateStruct(r); err != nil {
-		log.Println(err)
-
-		payload := NewErrorResponse(http.StatusBadRequest, "invalid recipient contents", err.Error())
 		return NewResponseError(payload, http.StatusBadRequest)
 	}
 
@@ -189,6 +169,20 @@ func GetSubscriptionsByClientAndRecipient(ctx context.Context, db bun.IDB, clien
 	return
 }
 
+func HasExistingSubscriptionsByClient(ctx context.Context, db bun.IDB, clientId string) (exists bool, err error) {
+	if exists, err = db.
+		NewSelect().
+		Model((*pushSubscription)(nil)).
+		Where("client_id = ?", clientId).
+		Exists(ctx); err != nil {
+		log.Println(err)
+
+		return false, NewResponseError(INTERNAL_SERVER_ERROR, http.StatusInternalServerError)
+	}
+
+	return
+}
+
 func ParseSubscription(req *http.Request) (sub *pushSubscription, err error) {
 	r := new(recipient)
 
@@ -209,9 +203,16 @@ func ParseSubscription(req *http.Request) (sub *pushSubscription, err error) {
 		return
 	}
 
-	sub = r.Subscription
-	sub.ClientId = r.ClientId
-	sub.RecipientId = r.RecipientId
+	sub = &pushSubscription{
+		Endpoint:       r.Subscription.Endpoint,
+		ExpirationTime: r.Subscription.ExpirationTime,
+		ClientId:       r.ClientId,
+		RecipientId:    r.RecipientId,
+		Keys: &pushSubscriptionKeys{
+			P256DH: r.Subscription.Keys.P256DH,
+			Auth:   r.Subscription.Keys.Auth,
+		},
+	}
 
 	if err = sub.Validate(); err != nil {
 		return nil, err
