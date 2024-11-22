@@ -33,7 +33,7 @@ func (k pushSubscriptionKeys) String() string {
 	return fmt.Sprintf("pushSubscriptionKeys{p256dh: %s, auth: %s}", k.P256DH, k.Auth)
 }
 
-type pushSubscription struct {
+type PushSubscription struct {
 	bun.BaseModel `bun:"table:subscription,alias:sub"`
 
 	Endpoint       string       `json:"endpoint" validate:"http_url" bun:"endpoint,pk"`
@@ -44,7 +44,7 @@ type pushSubscription struct {
 	Keys *pushSubscriptionKeys `json:"keys" validate:"required" bun:"rel:has-one,join:endpoint=subscription_endpoint"`
 }
 
-func (s *pushSubscription) Delete(ctx context.Context, db bun.IDB) (err error) {
+func (s *PushSubscription) Delete(ctx context.Context, db bun.IDB) (err error) {
 	if _, err = db.
 		NewDelete().
 		Model(s).
@@ -58,7 +58,7 @@ func (s *pushSubscription) Delete(ctx context.Context, db bun.IDB) (err error) {
 	return
 }
 
-func (s *pushSubscription) Save(ctx context.Context, db bun.IDB) (err error) {
+func (s *PushSubscription) Save(ctx context.Context, db bun.IDB) (err error) {
 	if err = s.Validate(); err != nil {
 		return
 	}
@@ -82,12 +82,12 @@ func (s *pushSubscription) Save(ctx context.Context, db bun.IDB) (err error) {
 	return
 }
 
-func (s pushSubscription) String() string {
-	return fmt.Sprintf("pushSubscription{endpoint: %s, expirationTime: %s, clientId: %s, recipientId: %s, keys: %s}",
+func (s PushSubscription) String() string {
+	return fmt.Sprintf("PushSubscription{endpoint: %s, expirationTime: %s, clientId: %s, recipientId: %s, keys: %s}",
 		s.Endpoint, s.ExpirationTime, s.ClientId, s.RecipientId, s.Keys)
 }
 
-func (s *pushSubscription) Validate() (err error) {
+func (s *PushSubscription) Validate() (err error) {
 	if err = CustomValidateStruct(s); err != nil {
 		log.Println(err)
 
@@ -101,7 +101,7 @@ func (s *pushSubscription) Validate() (err error) {
 func DeleteSubscriptionsByClient(ctx context.Context, db bun.IDB, clientId string) (err error) {
 	if _, err = db.
 		NewDelete().
-		Model(&pushSubscription{}).
+		Model(&PushSubscription{}).
 		Where("client_id = ?", clientId).
 		Exec(ctx); err != nil {
 		log.Println(err)
@@ -115,7 +115,7 @@ func DeleteSubscriptionsByClient(ctx context.Context, db bun.IDB, clientId strin
 func DeleteSubscriptionsByClientAndRecipient(ctx context.Context, db bun.IDB, clientId, recipientId string) (err error) {
 	if _, err = db.
 		NewDelete().
-		Model(&pushSubscription{}).
+		Model(&PushSubscription{}).
 		WhereGroup(" AND ", func(dq *bun.DeleteQuery) *bun.DeleteQuery {
 			return dq.
 				Where("client_id = ?", clientId).
@@ -130,7 +130,7 @@ func DeleteSubscriptionsByClientAndRecipient(ctx context.Context, db bun.IDB, cl
 	return
 }
 
-func GetSubscriptionsByClient(ctx context.Context, db bun.IDB, clientId string) (subs []pushSubscription, err error) {
+func GetSubscriptionsByClient(ctx context.Context, db bun.IDB, clientId string) (subs []PushSubscription, err error) {
 	if err = db.
 		NewSelect().
 		Model(&subs).
@@ -149,7 +149,7 @@ func GetSubscriptionsByClient(ctx context.Context, db bun.IDB, clientId string) 
 	return
 }
 
-func GetSubscriptionsByClientAndRecipient(ctx context.Context, db bun.IDB, clientId, recipientId string) (subs []pushSubscription, err error) {
+func GetSubscriptionsByClientAndRecipient(ctx context.Context, db bun.IDB, clientId, recipientId string) (subs []PushSubscription, err error) {
 	if err = db.
 		NewSelect().
 		Model(&subs).
@@ -172,7 +172,7 @@ func GetSubscriptionsByClientAndRecipient(ctx context.Context, db bun.IDB, clien
 func HasExistingSubscriptionsByClient(ctx context.Context, db bun.IDB, clientId string) (exists bool, err error) {
 	if exists, err = db.
 		NewSelect().
-		Model((*pushSubscription)(nil)).
+		Model((*PushSubscription)(nil)).
 		Where("client_id = ?", clientId).
 		Exists(ctx); err != nil {
 		log.Println(err)
@@ -183,7 +183,7 @@ func HasExistingSubscriptionsByClient(ctx context.Context, db bun.IDB, clientId 
 	return
 }
 
-func ParseSubscription(req *http.Request) (sub *pushSubscription, err error) {
+func ParseSubscription(req *http.Request) (sub *PushSubscription, err error) {
 	r := new(recipient)
 
 	if err = ParseBody(req, r); err != nil {
@@ -203,7 +203,7 @@ func ParseSubscription(req *http.Request) (sub *pushSubscription, err error) {
 		return
 	}
 
-	sub = &pushSubscription{
+	sub = &PushSubscription{
 		Endpoint:       r.Subscription.Endpoint,
 		ExpirationTime: r.Subscription.ExpirationTime,
 		ClientId:       r.ClientId,

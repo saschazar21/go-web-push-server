@@ -36,7 +36,7 @@ func TestSubscription(t *testing.T) {
 	type test struct {
 		name    string
 		payload any
-		cmp     *pushSubscription
+		cmp     *PushSubscription
 		wantErr bool
 	}
 
@@ -44,7 +44,7 @@ func TestSubscription(t *testing.T) {
 		{
 			"validates recipient",
 			sub,
-			&pushSubscription{
+			&PushSubscription{
 				ClientId:       "test client",
 				RecipientId:    "test user",
 				Endpoint:       "https://example.com",
@@ -59,7 +59,7 @@ func TestSubscription(t *testing.T) {
 				ClientId:     "test client",
 				Subscription: &pushSub,
 			},
-			&pushSubscription{
+			&PushSubscription{
 				ClientId:       "test client",
 				Endpoint:       "https://example.com",
 				ExpirationTime: &EpochMillis{time.Time(time.Now().Add(time.Hour))},
@@ -155,7 +155,7 @@ func TestSubscription(t *testing.T) {
 func TestSubscriptionWithDB(t *testing.T) {
 	type test struct {
 		name    string
-		exec    func(ctx context.Context, conn *bun.DB, sub *pushSubscription) error
+		exec    func(ctx context.Context, conn *bun.DB, sub *PushSubscription) error
 		wantErr bool
 	}
 
@@ -166,7 +166,7 @@ func TestSubscriptionWithDB(t *testing.T) {
 		Auth:   "DGv6ra1nlYgDCS1FRnbzlw",
 	}
 
-	pushSub := pushSubscription{
+	pushSub := PushSubscription{
 		Endpoint:       "https://example.com",
 		ExpirationTime: &EpochMillis{time.Time(time.Now().Add(time.Hour))},
 		Keys:           &keys,
@@ -188,12 +188,12 @@ func TestSubscriptionWithDB(t *testing.T) {
 	tests := []test{
 		{
 			"should fetch recipient from database",
-			func(ctx context.Context, conn *bun.DB, sub *pushSubscription) (err error) {
+			func(ctx context.Context, conn *bun.DB, sub *PushSubscription) (err error) {
 				if err = sub.Save(ctx, conn); err != nil {
 					return
 				}
 
-				var result []pushSubscription
+				var result []PushSubscription
 
 				result, err = GetSubscriptionsByClientAndRecipient(ctx, conn, sub.ClientId, sub.RecipientId)
 
@@ -218,12 +218,12 @@ func TestSubscriptionWithDB(t *testing.T) {
 		},
 		{
 			"should delete recipient from database",
-			func(ctx context.Context, conn *bun.DB, sub *pushSubscription) (err error) {
+			func(ctx context.Context, conn *bun.DB, sub *PushSubscription) (err error) {
 				if err = sub.Save(ctx, conn); err != nil {
 					return
 				}
 
-				var result []pushSubscription
+				var result []PushSubscription
 
 				result, err = GetSubscriptionsByClient(ctx, conn, sub.ClientId)
 
@@ -248,12 +248,12 @@ func TestSubscriptionWithDB(t *testing.T) {
 		},
 		{
 			"should delete recipient by client id and recipient id from database",
-			func(ctx context.Context, conn *bun.DB, sub *pushSubscription) (err error) {
+			func(ctx context.Context, conn *bun.DB, sub *PushSubscription) (err error) {
 				if err = sub.Save(ctx, conn); err != nil {
 					return
 				}
 
-				var result []pushSubscription
+				var result []PushSubscription
 
 				result, err = GetSubscriptionsByClient(ctx, conn, sub.ClientId)
 
@@ -278,7 +278,7 @@ func TestSubscriptionWithDB(t *testing.T) {
 		},
 		{
 			"should save recipient without id to database",
-			func(ctx context.Context, conn *bun.DB, sub *pushSubscription) (err error) {
+			func(ctx context.Context, conn *bun.DB, sub *PushSubscription) (err error) {
 				cp := *sub
 				cp.RecipientId = ""
 
@@ -286,7 +286,7 @@ func TestSubscriptionWithDB(t *testing.T) {
 					return
 				}
 
-				var result []pushSubscription
+				var result []PushSubscription
 
 				result, err = GetSubscriptionsByClient(ctx, conn, sub.ClientId)
 
@@ -311,7 +311,7 @@ func TestSubscriptionWithDB(t *testing.T) {
 		},
 		{
 			"fails to store recipient with missing client id in database",
-			func(ctx context.Context, conn *bun.DB, sub *pushSubscription) (err error) {
+			func(ctx context.Context, conn *bun.DB, sub *PushSubscription) (err error) {
 				cp := *sub
 				cp.ClientId = ""
 

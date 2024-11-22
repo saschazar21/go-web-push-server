@@ -15,8 +15,8 @@ const (
 type WebPushRequest struct {
 	Endpoint string `validate:"http_url"`
 	Payload  []byte `validate:"required,lte=4096"`
-	TTL      int64
-	Urgency  string `validate:"omitempty,oneof=very-low low normal high"` // see https://datatracker.ietf.org/doc/html/rfc8030#section-5.3
+
+	*WithWebPushParams
 }
 
 func (r *WebPushRequest) getOrigin() string {
@@ -62,6 +62,10 @@ func (r *WebPushRequest) Send() (res *http.Response, err error) {
 		http.CanonicalHeaderKey("Authorization"):    {fmt.Sprintf("vapid t=%s", jwt), fmt.Sprintf("k=%s", key)},
 		http.CanonicalHeaderKey("Content-Encoding"): {"aes128gcm"},
 		http.CanonicalHeaderKey("TTL"):              {fmt.Sprintf("%d", r.TTL)},
+	}
+
+	if r.Topic != "" {
+		req.Header.Add("Topic", r.Topic)
 	}
 
 	if r.Urgency != "" {

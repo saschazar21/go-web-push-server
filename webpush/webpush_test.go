@@ -12,12 +12,6 @@ import (
 	"github.com/stretchr/testify/assert"
 )
 
-type testStringer string
-
-func (s testStringer) String() string {
-	return string(s)
-}
-
 func testDecodePrivateKey(enc string) (privKey *ecdh.PrivateKey, err error) {
 	var buf []byte
 
@@ -146,7 +140,7 @@ func TestWebPushFixtures(t *testing.T) {
 
 	assert.Equal(t, nonce, nonceEnc)
 
-	push := &webpush{
+	push := &WebPush{
 		cekBuf,
 		"",
 		nonceBuf,
@@ -158,7 +152,7 @@ func TestWebPushFixtures(t *testing.T) {
 
 	assert.Len(t, headerBuf, 86)
 
-	if cipherBuf, err = push.encrypt(testStringer(plainText)); err != nil {
+	if cipherBuf, err = push.encrypt([]byte(plainText)); err != nil {
 		t.Errorf(errMsg, err, nil)
 	}
 
@@ -166,7 +160,7 @@ func TestWebPushFixtures(t *testing.T) {
 
 	assert.Equal(t, cipher, cipherEnc)
 
-	if resultBuf, err = push.Encrypt(testStringer(plainText)); err != nil {
+	if resultBuf, err = push.Encrypt([]byte(plainText)); err != nil {
 		t.Errorf(errMsg, err, nil)
 	}
 
@@ -193,7 +187,7 @@ MK468C66gOKehSQqxUQ8+HCI/g==
 
 	type test struct {
 		name         string
-		subscription *pushSubscription
+		subscription *PushSubscription
 		wantErr      bool
 		wantReqErr   bool
 	}
@@ -201,7 +195,7 @@ MK468C66gOKehSQqxUQ8+HCI/g==
 	tests := []test{
 		{
 			"validates",
-			&pushSubscription{
+			&PushSubscription{
 				Endpoint:       testServer.URL,
 				ExpirationTime: &EpochMillis{time.Time(time.Now().Add(time.Hour))},
 				Keys: &pushSubscriptionKeys{
@@ -214,7 +208,7 @@ MK468C66gOKehSQqxUQ8+HCI/g==
 		},
 		{
 			"fails at malformatted endpoint",
-			&pushSubscription{
+			&PushSubscription{
 				Endpoint:       "htp://push.example",
 				ExpirationTime: &EpochMillis{time.Time(time.Now().Add(time.Hour))},
 				Keys: &pushSubscriptionKeys{
@@ -227,7 +221,7 @@ MK468C66gOKehSQqxUQ8+HCI/g==
 		},
 		{
 			"fails at malformatted public key",
-			&pushSubscription{
+			&PushSubscription{
 				Endpoint:       testServer.URL,
 				ExpirationTime: &EpochMillis{time.Time(time.Now().Add(time.Hour))},
 				Keys: &pushSubscriptionKeys{
@@ -240,7 +234,7 @@ MK468C66gOKehSQqxUQ8+HCI/g==
 		},
 		{
 			"fails at malformatted auth secret",
-			&pushSubscription{
+			&PushSubscription{
 				Endpoint:       testServer.URL,
 				ExpirationTime: &EpochMillis{time.Time(time.Now().Add(time.Hour))},
 				Keys: &pushSubscriptionKeys{
@@ -258,7 +252,7 @@ MK468C66gOKehSQqxUQ8+HCI/g==
 			var res *http.Response
 			var err error
 
-			var p *webpush
+			var p *WebPush
 
 			if p, err = NewWebPush(tt.subscription); (err != nil) != tt.wantErr {
 				t.Errorf("TestWebPush err = %v, wantErr = %v", err, tt.wantErr)
@@ -266,7 +260,7 @@ MK468C66gOKehSQqxUQ8+HCI/g==
 
 			if err == nil {
 
-				if res, err = p.Send(testStringer("hello, world"), 0); (err != nil) != tt.wantReqErr {
+				if res, err = p.Send([]byte("hello, world"), &WithWebPushParams{TTL: 300}); (err != nil) != tt.wantReqErr {
 					t.Errorf("TestWebPush err = %v, wantErr = %v", err, tt.wantErr)
 				}
 

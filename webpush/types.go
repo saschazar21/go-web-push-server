@@ -110,3 +110,27 @@ var _ driver.Valuer = (*EpochMillis)(nil)
 func (e EpochMillis) Value() (val driver.Value, err error) {
 	return e.Time, nil
 }
+
+type WithWebPushParams struct {
+	Topic   string `json:"topic,omitempty" schema:"topic"`
+	TTL     int64  `json:"ttl" schema:"ttl" validate:"required"`
+	Urgency string `json:"urgency,omitempty" schema:"urgency" validate:"omitempty,oneof=very-low low normal high"` // see https://datatracker.ietf.org/doc/html/rfc8030#section-5.3
+}
+
+type WebPushDetails struct {
+	ClientId    string `json:"client" schema:"client" validate:"required"`
+	RecipientId string `json:"id,omitempty" schema:"id"`
+
+	*WithWebPushParams
+}
+
+func (w *WebPushDetails) Validate() (err error) {
+	if err = CustomValidateStruct(w); err != nil {
+		log.Println(err)
+
+		payload := NewErrorResponse(http.StatusBadRequest, "invalid webpush parameters", err.Error())
+		return NewResponseError(payload, http.StatusBadRequest)
+	}
+
+	return
+}

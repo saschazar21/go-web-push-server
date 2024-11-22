@@ -25,7 +25,7 @@ const (
 	MAX_PLAINTEXT_SIZE = 3993 // see https://datatracker.ietf.org/doc/html/rfc8291/#section-4
 )
 
-type webpush struct {
+type WebPush struct {
 	CEK       []byte
 	Endpoint  string
 	Nonce     []byte
@@ -33,8 +33,8 @@ type webpush struct {
 	Salt      []byte
 }
 
-func (p *webpush) encrypt(plaintext fmt.Stringer) (buf []byte, err error) {
-	buf = []byte(plaintext.String())
+func (p *WebPush) encrypt(payload []byte) (buf []byte, err error) {
+	buf = payload
 
 	if len(buf) > MAX_PLAINTEXT_SIZE {
 		errorPayload := NewErrorResponse(http.StatusRequestEntityTooLarge, "Push message body is too large", fmt.Sprintf("For compatibility reasons, the push message body must not exceed %d bytes.", MAX_PLAINTEXT_SIZE))
@@ -69,7 +69,7 @@ func (p *webpush) encrypt(plaintext fmt.Stringer) (buf []byte, err error) {
 }
 
 // https://datatracker.ietf.org/doc/html/rfc8188#section-2.1
-func (p *webpush) generateEncryptionContentCodingHeader() (header []byte) {
+func (p *WebPush) generateEncryptionContentCodingHeader() (header []byte) {
 	rs := []byte{0x00, 0x00, 0x10, 0x00} // 4096
 	keyid := p.PublicKey.Bytes()
 	idlen := byte(len(keyid)) // 56
@@ -81,34 +81,29 @@ func (p *webpush) generateEncryptionContentCodingHeader() (header []byte) {
 	return
 }
 
-func (p *webpush) Encrypt(plaintext fmt.Stringer) (buf []byte, err error) {
+func (p *WebPush) Encrypt(payload []byte) (buf []byte, err error) {
 	buf = p.generateEncryptionContentCodingHeader()
 
 	var cipher []byte
 
-	if cipher, err = p.encrypt(plaintext); err != nil {
+	if cipher, err = p.encrypt(payload); err != nil {
 		return nil, err
 	}
 
 	return append(buf, cipher...), nil
 }
 
-func (p *webpush) Send(plaintext fmt.Stringer, ttl int64, urgency ...string) (res *http.Response, err error) {
-	if len(urgency) == 0 {
-		urgency = []string{URGENCY_NORMAL}
-	}
+func (p *WebPush) Send(payload []byte, params *WithWebPushParams) (res *http.Response, err error) {
+	var buf []byte
 
-	var payload []byte
-
-	if payload, err = p.Encrypt(plaintext); err != nil {
+	if buf, err = p.Encrypt(payload); err != nil {
 		return
 	}
 
 	req := WebPushRequest{
 		p.Endpoint,
-		payload,
-		ttl,
-		urgency[0],
+		buf,
+		params,
 	}
 
 	return req.Send()
@@ -232,7 +227,7 @@ func getPrivateKey() (key *ecdh.PrivateKey, err error) {
 	return
 }
 
-func NewWebPush(sub *pushSubscription) (p *webpush, err error) {
+func NewWebPush(sub *PushSubscription) (p *WebPush, err error) {
 	var authSecret []byte
 
 	if authSecret, err = base64.RawURLEncoding.DecodeString(sub.Keys.Auth); err != nil {
@@ -284,7 +279,7 @@ func NewWebPush(sub *pushSubscription) (p *webpush, err error) {
 		return
 	}
 
-	return &webpush{
+	return &WebPush{
 		cek,
 		sub.Endpoint,
 		nonce,

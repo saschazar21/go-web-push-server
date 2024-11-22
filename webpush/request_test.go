@@ -46,8 +46,11 @@ MK468C66gOKehSQqxUQ8+HCI/g==
 			&WebPushRequest{
 				testServer.URL,
 				[]byte{0x00, 0x00, 0x00, 0x00},
-				3600,
-				"normal",
+				&WithWebPushParams{
+					"",
+					3600,
+					"normal",
+				},
 			},
 			false,
 		}, {
@@ -55,8 +58,11 @@ MK468C66gOKehSQqxUQ8+HCI/g==
 			&WebPushRequest{
 				testServer.URL,
 				[]byte{0x00, 0x00, 0x00, 0x00},
-				-1,
-				"normal",
+				&WithWebPushParams{
+					"",
+					-1,
+					"normal",
+				},
 			},
 			false,
 		}, {
@@ -64,8 +70,11 @@ MK468C66gOKehSQqxUQ8+HCI/g==
 			&WebPushRequest{
 				testServer.URL,
 				[]byte{0x00, 0x00, 0x00, 0x00},
-				MAX_TTL_VALUE + 2,
-				"normal",
+				&WithWebPushParams{
+					"",
+					MAX_TTL_VALUE + 2,
+					"normal",
+				},
 			},
 			false,
 		}, {
@@ -73,8 +82,11 @@ MK468C66gOKehSQqxUQ8+HCI/g==
 			&WebPushRequest{
 				"htp://push.example",
 				[]byte{0x00, 0x00, 0x00, 0x00},
-				3600,
-				"normal",
+				&WithWebPushParams{
+					"",
+					3600,
+					"normal",
+				},
 			},
 			true,
 		}, {
@@ -82,8 +94,11 @@ MK468C66gOKehSQqxUQ8+HCI/g==
 			&WebPushRequest{
 				testServer.URL,
 				make([]byte, 4097),
-				3600,
-				"normal",
+				&WithWebPushParams{
+					"",
+					3600,
+					"normal",
+				},
 			},
 			true,
 		}, {
@@ -91,8 +106,11 @@ MK468C66gOKehSQqxUQ8+HCI/g==
 			&WebPushRequest{
 				testServer.URL,
 				make([]byte, 4096),
-				3600,
-				"normaly",
+				&WithWebPushParams{
+					"",
+					3600,
+					"normaly",
+				},
 			},
 			true,
 		},
