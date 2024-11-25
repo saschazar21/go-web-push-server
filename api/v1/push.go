@@ -2,6 +2,8 @@ package v1
 
 import (
 	"bytes"
+	"context"
+	"fmt"
 	"log"
 	"net/http"
 
@@ -13,22 +15,33 @@ import (
 var decoder = schema.NewDecoder()
 
 func decodeParams(r *http.Request) (params *webpush.WebPushDetails, err error) {
-	if err = decoder.Decode(&params, r.URL.Query()); err != nil {
+	params = new(webpush.WebPushDetails)
+
+	if err = decoder.Decode(params, r.URL.Query()); err != nil {
 		log.Println(err)
 
 		err = webpush.NewResponseError(webpush.BAD_REQUEST_ERROR, http.StatusBadRequest)
 		return
 	}
 
-	if err = params.Validate(); err != nil {
-		return
+	return
+}
+
+func deleteObsoleteSubscriptions(ctx context.Context, db *bun.DB, errorObjects []webpush.ErrorObject) (err error) {
+	for _, errObj := range errorObjects {
+		if errObj.Meta == nil || (errObj.Status != http.StatusGone && errObj.Status != http.StatusNotFound) {
+			continue
+		}
+
+		webpush.DeleteSubscriptionByEndpoint(ctx, db, errObj.Meta.Endpoint)
 	}
 
 	return
 }
 
-func sendPushNotifications(subscriptions []webpush.PushSubscription, payload []byte, params *webpush.WithWebPushParams) (err error) {
+func sendPushNotifications(subscriptions []webpush.PushSubscription, payload []byte, params *webpush.WithWebPushParams) (errorObjects []webpush.ErrorObject, err error) {
 	var notifications []*webpush.WebPush
+	var statusCode int
 
 	for _, sub := range subscriptions {
 		push := new(webpush.WebPush)
@@ -41,16 +54,46 @@ func sendPushNotifications(subscriptions []webpush.PushSubscription, payload []b
 	}
 
 	for _, notification := range notifications {
+		var errObj webpush.ErrorObject
 		var res *http.Response
 
 		if res, err = notification.Send(payload, params); err != nil {
 			return
 		}
 
-		if res.StatusCode != http.StatusCreated {
-			err = webpush.NewResponseError(webpush.INTERNAL_SERVER_ERROR, res.StatusCode)
-			return
+		switch res.StatusCode {
+		case http.StatusOK, http.StatusCreated, http.StatusNoContent:
+			continue
+		case http.StatusBadRequest:
+			errObj = webpush.BAD_REQUEST_ERROR.Errors[0]
+			if statusCode != http.StatusInternalServerError {
+				statusCode = http.StatusBadRequest
+			}
+		case http.StatusNotFound:
+			errObj = webpush.NewErrorResponse(http.StatusNotFound, "Subscription Not Found").Errors[0]
+		case http.StatusGone:
+			errObj = webpush.NewErrorResponse(http.StatusGone, "Subscription Expired").Errors[0]
+		case http.StatusTooManyRequests:
+			errObj = webpush.NewErrorResponse(http.StatusTooManyRequests, "Too Many Requests").Errors[0]
+			errObj.Detail = fmt.Sprintf("Retry after %s", res.Header.Get("Retry-After"))
+		default:
+			errObj = webpush.NewErrorResponse(http.StatusInternalServerError, "Internal Server Error").Errors[0]
+			statusCode = http.StatusInternalServerError
 		}
+
+		errObj.Meta = &webpush.ErrorMeta{
+			Endpoint: notification.Endpoint,
+		}
+
+		errorObjects = append(errorObjects, errObj)
+	}
+
+	if len(errorObjects) > 0 {
+		if statusCode == 0 {
+			statusCode = errorObjects[0].Status
+		}
+
+		err = webpush.NewResponseError(&webpush.ErrorResponse{Errors: errorObjects}, statusCode)
 	}
 
 	return
@@ -89,12 +132,25 @@ func HandlePush(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
+	// TODO: add client to params
+
+	if err = params.Validate(); err != nil {
+		webpush.WriteResponseError(w, err)
+		return
+	}
+
 	buf := new(bytes.Buffer)
 
 	if _, err = buf.ReadFrom(r.Body); err != nil {
 		log.Println(err)
 
 		webpush.WriteResponseError(w, webpush.NewResponseError(webpush.BAD_REQUEST_ERROR, http.StatusBadRequest))
+		return
+	}
+
+	if len(buf.Bytes()) == 0 {
+		payload := webpush.NewErrorResponse(http.StatusBadRequest, "empty payload")
+		webpush.WriteResponseError(w, webpush.NewResponseError(payload, http.StatusBadRequest))
 		return
 	}
 
@@ -129,8 +185,16 @@ func HandlePush(w http.ResponseWriter, r *http.Request) {
 		}
 	}
 
-	if err = sendPushNotifications(subs, buf.Bytes(), params.WithWebPushParams); err != nil {
+	if len(subs) == 0 {
+		payload := webpush.NewErrorResponse(http.StatusNotFound, "no subscriptions found")
+		webpush.WriteResponseError(w, webpush.NewResponseError(payload, http.StatusNotFound))
+		return
+	}
+
+	if errorObjects, err := sendPushNotifications(subs, buf.Bytes(), params.WithWebPushParams); err != nil {
 		log.Println(err)
+
+		deleteObsoleteSubscriptions(r.Context(), db, errorObjects)
 
 		webpush.WriteResponseError(w, err)
 		return

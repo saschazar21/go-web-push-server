@@ -113,7 +113,7 @@ func (e EpochMillis) Value() (val driver.Value, err error) {
 
 type WithWebPushParams struct {
 	Topic   string `json:"topic,omitempty" schema:"topic"`
-	TTL     int64  `json:"ttl" schema:"ttl" validate:"required"`
+	TTL     int64  `json:"ttl" schema:"ttl" validate:"gte=0"`
 	Urgency string `json:"urgency,omitempty" schema:"urgency" validate:"omitempty,oneof=very-low low normal high"` // see https://datatracker.ietf.org/doc/html/rfc8030#section-5.3
 }
 

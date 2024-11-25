@@ -130,6 +130,20 @@ func DeleteSubscriptionsByClientAndRecipient(ctx context.Context, db bun.IDB, cl
 	return
 }
 
+func DeleteSubscriptionByEndpoint(ctx context.Context, db bun.IDB, endpoint string) (err error) {
+	if _, err = db.
+		NewDelete().
+		Model(&PushSubscription{}).
+		Where("endpoint = ?", endpoint).
+		Exec(ctx); err != nil {
+		log.Println(err)
+
+		return NewResponseError(INTERNAL_SERVER_ERROR, http.StatusInternalServerError)
+	}
+
+	return
+}
+
 func GetSubscriptionsByClient(ctx context.Context, db bun.IDB, clientId string) (subs []PushSubscription, err error) {
 	if err = db.
 		NewSelect().
@@ -138,7 +152,11 @@ func GetSubscriptionsByClient(ctx context.Context, db bun.IDB, clientId string) 
 		WhereGroup(" AND ", func(sq *bun.SelectQuery) *bun.SelectQuery {
 			return sq.
 				Where("client_id = ?", clientId).
-				Where("expiration_time > NOW()")
+				WhereGroup(" AND ", func(sq *bun.SelectQuery) *bun.SelectQuery {
+					return sq.
+						Where("expiration_time IS NULL").
+						WhereOr("expiration_time > NOW()")
+				})
 		}).
 		Scan(ctx); err != nil {
 		log.Println(err)
@@ -158,7 +176,11 @@ func GetSubscriptionsByClientAndRecipient(ctx context.Context, db bun.IDB, clien
 			return sq.
 				Where("client_id = ?", clientId).
 				Where("recipient_id = ?", recipientId).
-				Where("expiration_time > NOW()")
+				WhereGroup(" AND ", func(sq *bun.SelectQuery) *bun.SelectQuery {
+					return sq.
+						Where("expiration_time IS NULL").
+						WhereOr("expiration_time > NOW()")
+				})
 		}).
 		Scan(ctx); err != nil {
 		log.Println(err)

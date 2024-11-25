@@ -95,14 +95,14 @@ func TestResponseError(t *testing.T) {
 			[]http.Header{
 				{
 					http.CanonicalHeaderKey("allow"):        {http.MethodPost},
-					http.CanonicalHeaderKey("content-type"): {APPLICATION_JSON},
+					http.CanonicalHeaderKey("content-type"): {JSON_API},
 				},
 			},
 			ResponseError{
 				fmt.Sprintf("{\"errors\":[{\"status\":%d,\"title\":\"%s\"}]}", http.StatusMethodNotAllowed, "Method Not Allowed"),
 				map[string][]string{
 					http.CanonicalHeaderKey("allow"):        {http.MethodPost},
-					http.CanonicalHeaderKey("content-type"): {APPLICATION_JSON},
+					http.CanonicalHeaderKey("content-type"): {JSON_API},
 				},
 				http.StatusMethodNotAllowed,
 			},
@@ -143,7 +143,7 @@ func TestResponseError(t *testing.T) {
 			ResponseError{
 				fmt.Sprintf("{\"errors\":[{\"status\":%d,\"title\":\"%s\"}]}", http.StatusInternalServerError, "Internal Server Error"),
 				map[string][]string{
-					http.CanonicalHeaderKey("content-type"): {APPLICATION_JSON},
+					http.CanonicalHeaderKey("content-type"): {JSON_API},
 				},
 				http.StatusInternalServerError,
 			},
@@ -158,7 +158,7 @@ func TestResponseError(t *testing.T) {
 			ResponseError{
 				fmt.Sprintf("{\"errors\":[{\"status\":%d,\"title\":\"%s\"}]}", http.StatusInternalServerError, "Internal Server Error"),
 				map[string][]string{
-					http.CanonicalHeaderKey("content-type"): {APPLICATION_JSON},
+					http.CanonicalHeaderKey("content-type"): {JSON_API},
 				},
 				http.StatusInternalServerError,
 			},

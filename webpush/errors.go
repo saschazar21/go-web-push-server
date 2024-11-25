@@ -51,11 +51,16 @@ var (
 	}
 )
 
+type ErrorMeta struct {
+	Endpoint string `json:"endpoint,omitempty"`
+}
+
 type ErrorObject struct {
-	Status int    `json:"status" validate:"required"`
-	Code   string `json:"code,omitempty"`
-	Title  string `json:"title" validate:"required"`
-	Detail string `json:"detail,omitempty"`
+	Status int        `json:"status" validate:"required"`
+	Code   string     `json:"code,omitempty"`
+	Title  string     `json:"title" validate:"required"`
+	Detail string     `json:"detail,omitempty"`
+	Meta   *ErrorMeta `json:"meta,omitempty"`
 }
 
 type ErrorResponse struct {
@@ -76,7 +81,7 @@ func (res *ErrorResponse) Validate() (err error) {
 	if err = CustomValidateStruct(res); err != nil {
 		log.Println(err)
 
-		return NewResponseError(INTERNAL_SERVER_ERROR, http.StatusInternalServerError, http.Header{http.CanonicalHeaderKey("content-type"): {APPLICATION_JSON}})
+		return NewResponseError(INTERNAL_SERVER_ERROR, http.StatusInternalServerError, http.Header{http.CanonicalHeaderKey("content-type"): {JSON_API}})
 	}
 
 	return
@@ -93,6 +98,7 @@ func NewErrorResponse(status int, title string, other ...string) *ErrorResponse 
 				secondary[1],
 				title,
 				secondary[0],
+				nil,
 			},
 		},
 	}
@@ -123,7 +129,7 @@ func (err ResponseError) Write(w http.ResponseWriter) {
 func NewResponseError(contents StringerValidator, status int, headers ...http.Header) (err error) {
 	if len(headers) < 1 {
 		headers = []http.Header{
-			{http.CanonicalHeaderKey("content-type"): {APPLICATION_JSON}},
+			{http.CanonicalHeaderKey("content-type"): {JSON_API}},
 		}
 	}
 
@@ -139,7 +145,7 @@ func NewResponseError(contents StringerValidator, status int, headers ...http.He
 		contents = INTERNAL_SERVER_ERROR
 		status = http.StatusInternalServerError
 		headers = []http.Header{
-			{http.CanonicalHeaderKey("content-type"): {APPLICATION_JSON}},
+			{http.CanonicalHeaderKey("content-type"): {JSON_API}},
 		}
 	}
 

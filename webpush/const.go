@@ -12,6 +12,7 @@ const (
 
 const (
 	APPLICATION_JSON = "application/json"
+	JSON_API         = "application/vnd.api+json"
 	TEXT_PLAIN       = "text/plain"
 )
 
