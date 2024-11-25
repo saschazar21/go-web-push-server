@@ -49,12 +49,13 @@ AwEHoUQDQgAE06wJJOQ3HWq9+MoyF4THhhV83ca/GdmkQ562OfZiisuu6/latYaX
 	}
 
 	type test struct {
-		name        string
-		method      string
-		contentType string
-		params      *webpush.WebPushDetails
-		payload     []byte
-		wantStatus  int
+		name          string
+		method        string
+		contentType   string
+		params        *webpush.WebPushDetails
+		payload       []byte
+		triggerStatus int
+		wantStatus    int
 	}
 
 	ctx := context.Background()
@@ -76,6 +77,7 @@ AwEHoUQDQgAE06wJJOQ3HWq9+MoyF4THhhV83ca/GdmkQ562OfZiisuu6/latYaX
 			webpush.TEXT_PLAIN,
 			&webpush.WebPushDetails{},
 			[]byte(""),
+			201,
 			400,
 		},
 		{
@@ -89,6 +91,7 @@ AwEHoUQDQgAE06wJJOQ3HWq9+MoyF4THhhV83ca/GdmkQ562OfZiisuu6/latYaX
 				},
 			},
 			[]byte(""),
+			201,
 			400,
 		},
 		{
@@ -103,7 +106,23 @@ AwEHoUQDQgAE06wJJOQ3HWq9+MoyF4THhhV83ca/GdmkQ562OfZiisuu6/latYaX
 				},
 			},
 			[]byte(""),
+			201,
 			400,
+		},
+		{
+			"should return 413 Request Entity Too Large on body that is too large",
+			http.MethodPost,
+			webpush.TEXT_PLAIN,
+			&webpush.WebPushDetails{
+				ClientId:    "test client",
+				RecipientId: "test user",
+				WithWebPushParams: &webpush.WithWebPushParams{
+					TTL: 0,
+				},
+			},
+			make([]byte, 4097),
+			201,
+			http.StatusRequestEntityTooLarge,
 		},
 		{
 			"should return 405 Method Not Allowed on invalid method",
@@ -117,6 +136,7 @@ AwEHoUQDQgAE06wJJOQ3HWq9+MoyF4THhhV83ca/GdmkQ562OfZiisuu6/latYaX
 				},
 			},
 			[]byte("test"),
+			201,
 			405,
 		},
 		{
@@ -131,6 +151,7 @@ AwEHoUQDQgAE06wJJOQ3HWq9+MoyF4THhhV83ca/GdmkQ562OfZiisuu6/latYaX
 				},
 			},
 			[]byte("<b>test</b>"),
+			201,
 			http.StatusUnsupportedMediaType,
 		},
 		{
@@ -145,10 +166,11 @@ AwEHoUQDQgAE06wJJOQ3HWq9+MoyF4THhhV83ca/GdmkQ562OfZiisuu6/latYaX
 				},
 			},
 			[]byte("test"),
+			201,
 			404,
 		},
 		{
-			"should return 201 for successful push messages by client ID",
+			"triggers 400 Bad Request",
 			http.MethodPost,
 			webpush.TEXT_PLAIN,
 			&webpush.WebPushDetails{
@@ -159,6 +181,96 @@ AwEHoUQDQgAE06wJJOQ3HWq9+MoyF4THhhV83ca/GdmkQ562OfZiisuu6/latYaX
 				},
 			},
 			[]byte("test"),
+			400,
+			400,
+		},
+		{
+			"triggers 404 Not Found",
+			http.MethodPost,
+			webpush.TEXT_PLAIN,
+			&webpush.WebPushDetails{
+				ClientId:    "test client",
+				RecipientId: "test user",
+				WithWebPushParams: &webpush.WithWebPushParams{
+					TTL: 0,
+				},
+			},
+			[]byte("test"),
+			404,
+			404,
+		},
+		{
+			"triggers 410 Gone",
+			http.MethodPost,
+			webpush.TEXT_PLAIN,
+			&webpush.WebPushDetails{
+				ClientId:    "test client",
+				RecipientId: "test user",
+				WithWebPushParams: &webpush.WithWebPushParams{
+					TTL: 0,
+				},
+			},
+			[]byte("test"),
+			410,
+			410,
+		},
+		{
+			"triggers 429 Gone",
+			http.MethodPost,
+			webpush.TEXT_PLAIN,
+			&webpush.WebPushDetails{
+				ClientId:    "test client",
+				RecipientId: "test user",
+				WithWebPushParams: &webpush.WithWebPushParams{
+					TTL: 0,
+				},
+			},
+			[]byte("test"),
+			http.StatusTooManyRequests,
+			http.StatusTooManyRequests,
+		},
+		{
+			"returns 500 Internal Server Error on unknown status code",
+			http.MethodPost,
+			webpush.TEXT_PLAIN,
+			&webpush.WebPushDetails{
+				ClientId:    "test client",
+				RecipientId: "test user",
+				WithWebPushParams: &webpush.WithWebPushParams{
+					TTL: 0,
+				},
+			},
+			[]byte("test"),
+			401,
+			http.StatusInternalServerError,
+		},
+		{
+			"should return 201 for successful push messages by client & recipient ID",
+			http.MethodPost,
+			webpush.TEXT_PLAIN,
+			&webpush.WebPushDetails{
+				ClientId:    "test client",
+				RecipientId: "test user",
+				WithWebPushParams: &webpush.WithWebPushParams{
+					TTL: 0,
+				},
+			},
+			[]byte("test"),
+			201,
+			201,
+		},
+		{
+			"should return 201 for successful push messages by client ID",
+			http.MethodPost,
+			webpush.TEXT_PLAIN,
+			&webpush.WebPushDetails{
+				ClientId: "test client",
+				WithWebPushParams: &webpush.WithWebPushParams{
+					TTL: 0,
+				},
+			},
+			[]byte("test"),
+			201,
 			201,
 		},
 	}
@@ -181,7 +293,7 @@ AwEHoUQDQgAE06wJJOQ3HWq9+MoyF4THhhV83ca/GdmkQ562OfZiisuu6/latYaX
 				for k, v := range r.Header {
 					w.Header().Set(k, v[0])
 				}
-				w.WriteHeader(http.StatusCreated)
+				w.WriteHeader(tt.triggerStatus)
 			}))
 
 			// create test recipient
