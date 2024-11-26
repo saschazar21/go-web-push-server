@@ -5,12 +5,18 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/saschazar21/go-web-push-server/auth"
 	"github.com/saschazar21/go-web-push-server/webpush"
 	"github.com/uptrace/bun"
 )
 
 func HandleSubscribe(w http.ResponseWriter, r *http.Request) {
-	// TODO: implement auth handling
+	clientId, err := auth.HandleBasicAuth(r)
+
+	if err != nil {
+		webpush.WriteResponseError(w, err)
+		return
+	}
 
 	sub, err := webpush.ParseSubscription(r)
 
@@ -18,6 +24,11 @@ func HandleSubscribe(w http.ResponseWriter, r *http.Request) {
 		log.Println(err)
 
 		webpush.WriteResponseError(w, err)
+		return
+	}
+
+	if clientId != sub.ClientId {
+		webpush.WriteResponseError(w, webpush.NewResponseError(auth.FORBIDDEN_ERROR, http.StatusBadRequest))
 		return
 	}
 

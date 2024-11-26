@@ -8,6 +8,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/schema"
+	"github.com/saschazar21/go-web-push-server/auth"
 	"github.com/saschazar21/go-web-push-server/webpush"
 	"github.com/uptrace/bun"
 )
@@ -100,9 +101,12 @@ func sendPushNotifications(subscriptions []webpush.PushSubscription, payload []b
 }
 
 func HandlePush(w http.ResponseWriter, r *http.Request) {
-	// TODO: implement auth handling
+	clientId, err := auth.HandleBasicAuth(r)
 
-	var err error
+	if err != nil {
+		webpush.WriteResponseError(w, err)
+		return
+	}
 
 	if r.Method != http.MethodPost {
 		header := http.Header{
@@ -132,7 +136,7 @@ func HandlePush(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	// TODO: add client to params
+	params.ClientId = clientId
 
 	if err = params.Validate(); err != nil {
 		webpush.WriteResponseError(w, err)

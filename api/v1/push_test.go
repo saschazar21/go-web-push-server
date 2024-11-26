@@ -10,6 +10,7 @@ import (
 	"strconv"
 	"testing"
 
+	"github.com/saschazar21/go-web-push-server/auth"
 	webpush_test "github.com/saschazar21/go-web-push-server/test"
 	"github.com/saschazar21/go-web-push-server/webpush"
 	"github.com/uptrace/bun"
@@ -18,6 +19,8 @@ import (
 )
 
 func TestHandlePush(t *testing.T) {
+	basicAuthPassword := "123"
+	t.Setenv(auth.BASIC_AUTH_PASSWORD_ENV, basicAuthPassword)
 	t.Setenv("CWD", "../../")
 	t.Setenv(webpush.VAPID_EXPIRY_DURATION_ENV, "300")
 	t.Setenv(webpush.VAPID_PRIVATE_KEY_ENV, `
@@ -72,16 +75,7 @@ AwEHoUQDQgAE06wJJOQ3HWq9+MoyF4THhhV83ca/GdmkQ562OfZiisuu6/latYaX
 
 	tests := []test{
 		{
-			"should return 400 Bad Request on invalid push request",
-			http.MethodPost,
-			webpush.TEXT_PLAIN,
-			&webpush.WebPushDetails{},
-			[]byte(""),
-			201,
-			400,
-		},
-		{
-			"should return 400 Bad Request on missing client ID",
+			"should return 401 Unauthorized on missing client ID",
 			http.MethodPost,
 			webpush.TEXT_PLAIN,
 			&webpush.WebPushDetails{
@@ -92,7 +86,7 @@ AwEHoUQDQgAE06wJJOQ3HWq9+MoyF4THhhV83ca/GdmkQ562OfZiisuu6/latYaX
 			},
 			[]byte(""),
 			201,
-			400,
+			401,
 		},
 		{
 			"should return 400 Bad Request on missing body",
@@ -373,6 +367,7 @@ AwEHoUQDQgAE06wJJOQ3HWq9+MoyF4THhhV83ca/GdmkQ562OfZiisuu6/latYaX
 			}
 
 			req.Header.Add("content-type", tt.contentType)
+			req.SetBasicAuth(tt.params.ClientId, basicAuthPassword)
 
 			res, err := applicationServer.Client().Do(req)
 

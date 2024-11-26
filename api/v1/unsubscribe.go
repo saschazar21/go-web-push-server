@@ -6,28 +6,26 @@ import (
 	"log"
 	"net/http"
 
+	"github.com/saschazar21/go-web-push-server/auth"
 	"github.com/saschazar21/go-web-push-server/webpush"
 	"github.com/uptrace/bun"
 )
 
 func HandleUnsubscribe(w http.ResponseWriter, r *http.Request) {
+	clientId, err := auth.HandleBasicAuth(r)
+	recipientId := r.URL.Query().Get("id")
+
+	if err != nil {
+		webpush.WriteResponseError(w, err)
+		return
+	}
+
 	if r.Method != http.MethodDelete {
 		headers := http.Header{
 			http.CanonicalHeaderKey("allow"): []string{http.MethodDelete},
 		}
 
 		webpush.WriteResponseError(w, webpush.NewResponseError(webpush.METHOD_NOT_ALLOWED_ERROR, http.StatusMethodNotAllowed, headers))
-		return
-	}
-
-	// TODO: implement auth handling
-
-	clientId := r.URL.Query().Get("client")
-	recipientId := r.URL.Query().Get("id")
-
-	if clientId == "" {
-		payload := webpush.NewErrorResponse(http.StatusBadRequest, "missing client ID")
-		webpush.WriteResponseError(w, webpush.NewResponseError(payload, http.StatusBadRequest))
 		return
 	}
 

@@ -8,12 +8,15 @@ import (
 	"net/http/httptest"
 	"testing"
 
+	"github.com/saschazar21/go-web-push-server/auth"
 	webpush_test "github.com/saschazar21/go-web-push-server/test"
 	"github.com/saschazar21/go-web-push-server/webpush"
 	"gotest.tools/v3/assert"
 )
 
 func TestHandleSubscribe(t *testing.T) {
+	basicAuthPassword := "123"
+	t.Setenv(auth.BASIC_AUTH_PASSWORD_ENV, basicAuthPassword)
 	t.Setenv("CWD", "../../")
 
 	type keys struct {
@@ -55,7 +58,7 @@ func TestHandleSubscribe(t *testing.T) {
 
 	tests := []test{
 		{
-			"should return 400 Bad Request on invalid subscription",
+			"should return 401 Unauthorized on invalid subscription",
 			http.MethodPost,
 			recipient{
 				ClientId:    "",
@@ -69,7 +72,7 @@ func TestHandleSubscribe(t *testing.T) {
 					},
 				},
 			},
-			http.StatusBadRequest,
+			http.StatusUnauthorized,
 		},
 		{
 			"should return 405 Method Not Allowed on invalid method",
@@ -127,6 +130,13 @@ func TestHandleSubscribe(t *testing.T) {
 
 			req, _ := http.NewRequest(tt.method, server.URL, bytes.NewBuffer(buf))
 			req.Header.Add("content-type", webpush.APPLICATION_JSON)
+
+			clientId := ""
+			if recipient, ok := tt.payload.(recipient); ok {
+				clientId = recipient.ClientId
+			}
+
+			req.SetBasicAuth(clientId, basicAuthPassword)
 
 			res := new(http.Response)
 			res, err = http.DefaultClient.Do(req)

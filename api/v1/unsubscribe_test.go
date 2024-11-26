@@ -9,6 +9,7 @@ import (
 	"net/url"
 	"testing"
 
+	"github.com/saschazar21/go-web-push-server/auth"
 	webpush_test "github.com/saschazar21/go-web-push-server/test"
 	"github.com/saschazar21/go-web-push-server/webpush"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
@@ -16,6 +17,8 @@ import (
 )
 
 func TestHandleUnsubscribe(t *testing.T) {
+	basicAuthPassword := "123"
+	t.Setenv(auth.BASIC_AUTH_PASSWORD_ENV, basicAuthPassword)
 	t.Setenv("CWD", "../../")
 
 	type params struct {
@@ -73,13 +76,13 @@ func TestHandleUnsubscribe(t *testing.T) {
 			405,
 		},
 		{
-			"should return 400 Bad Request on invalid client",
+			"should return 401 Unauthorized on invalid client",
 			http.MethodDelete,
 			params{
 				clientId:    "",
 				recipientId: "test user",
 			},
-			400,
+			401,
 		},
 		{
 			"should return 404 Not Found on missing client",
@@ -179,6 +182,8 @@ func TestHandleUnsubscribe(t *testing.T) {
 			if err != nil {
 				t.Fatalf("HandleUnsubscribe err = %v, wantErr = %v", err, nil)
 			}
+
+			req.SetBasicAuth(tt.payload.clientId, basicAuthPassword)
 
 			// create response recorder
 			res, err := server.Client().Do(req)
