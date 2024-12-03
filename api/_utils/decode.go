@@ -1,4 +1,4 @@
-package v1
+package api_utils
 
 import (
 	"log"
@@ -14,7 +14,7 @@ type recipientParams struct {
 	RecipientId string `schema:"id"`
 }
 
-func decodeRecipientParams(r *http.Request) (params *recipientParams, err error) {
+func DecodeRecipientParams(r *http.Request) (params *recipientParams, err error) {
 	params = new(recipientParams)
 
 	decoder.IgnoreUnknownKeys(true)

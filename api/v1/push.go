@@ -7,11 +7,14 @@ import (
 	"log"
 	"net/http"
 
-	api_utils "github.com/saschazar21/go-web-push-server/api/utils"
+	"github.com/gorilla/schema"
+	api_utils "github.com/saschazar21/go-web-push-server/api/_utils"
 	"github.com/saschazar21/go-web-push-server/auth"
 	"github.com/saschazar21/go-web-push-server/webpush"
 	"github.com/uptrace/bun"
 )
+
+var decoder = schema.NewDecoder()
 
 func decodePushParams(r *http.Request) (params *webpush.WebPushDetails, err error) {
 	params = new(webpush.WebPushDetails)

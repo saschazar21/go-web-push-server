@@ -1,4 +1,5 @@
 {
+  "outputDirectory": "public",
   "rewrites": [
     { "source": "/api/v1/push/:id", "destination": "/api/v1/push" },
     {

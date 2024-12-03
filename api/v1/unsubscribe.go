@@ -6,7 +6,7 @@ import (
 	"log"
 	"net/http"
 
-	api_utils "github.com/saschazar21/go-web-push-server/api/utils"
+	api_utils "github.com/saschazar21/go-web-push-server/api/_utils"
 	"github.com/saschazar21/go-web-push-server/auth"
 	"github.com/saschazar21/go-web-push-server/webpush"
 	"github.com/uptrace/bun"
@@ -41,8 +41,9 @@ func HandleUnsubscribe(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if recipientId == "" {
-		var recipientParams *recipientParams
-		if recipientParams, err = decodeRecipientParams(r); err != nil {
+		recipientParams, err := api_utils.DecodeRecipientParams(r)
+
+		if err != nil {
 			webpush.WriteResponseError(w, err)
 			return
 		}
