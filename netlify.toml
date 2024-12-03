@@ -1,5 +1,5 @@
 [build]
-  command = "make netlify"
+  command = "make"
   functions = "functions"
   publish = "public"
 
@@ -8,3 +8,21 @@
   GO111MODULE = "on"
   GOARCH = "amd64"
   GOOS = "linux"
+
+[[redirects]]
+  from = "/api/v1/push/:id"
+  to = "/.netlify/functions/v1_push"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/v1/subscribe"
+  to = "/.netlify/functions/v1_subscribe"
+  status = 200
+  force = true
+
+[[redirects]]
+  from = "/api/v1/unsubscribe/:id"
+  to = "/.netlify/functions/v1_unsubscribe"
+  status = 200
+  force = true

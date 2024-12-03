@@ -1,12 +1,13 @@
 .PHONY: test clean
 
-netlify:
-	mkdir -p functions
-	go get ./...
-	go install ./...
+build:
+	sh -c ./build.sh
 
 test:
-	go test ./...
+	go test -coverprofile coverage.out ./...
+	
+coverage: test
+	go tool cover -html coverage.out
 
 clean:
-	rm -f functions/*
+	for d in $(shell ls functions); do rm -rf functions/$$d; done

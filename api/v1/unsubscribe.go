@@ -6,16 +6,52 @@ import (
 	"log"
 	"net/http"
 
+	api_utils "github.com/saschazar21/go-web-push-server/api/utils"
 	"github.com/saschazar21/go-web-push-server/auth"
 	"github.com/saschazar21/go-web-push-server/webpush"
 	"github.com/uptrace/bun"
 )
 
-func HandleUnsubscribe(w http.ResponseWriter, r *http.Request) {
-	clientId, err := auth.HandleBasicAuth(r)
-	recipientId := r.URL.Query().Get("id")
+func decodeUnsubscribeRecipient(r *http.Request) (recipientId string, err error) {
+	var names []string
+	var values []string
 
-	if err != nil {
+	if values, names, err = api_utils.HandleURLRegex(r, "/api/v1/unsubscribe/(?P<id>[^/]+)$"); err != nil || len(values) == 0 {
+		return
+	}
+
+	for i, name := range names {
+		if name == "id" {
+			recipientId = values[i]
+			break
+		}
+	}
+
+	return
+}
+
+func HandleUnsubscribe(w http.ResponseWriter, r *http.Request) {
+	log.Println(r.URL.String())
+	var err error
+
+	var recipientId string
+	if recipientId, err = decodeUnsubscribeRecipient(r); err != nil {
+		webpush.WriteResponseError(w, err)
+		return
+	}
+
+	if recipientId == "" {
+		var recipientParams *recipientParams
+		if recipientParams, err = decodeRecipientParams(r); err != nil {
+			webpush.WriteResponseError(w, err)
+			return
+		}
+
+		recipientId = recipientParams.RecipientId
+	}
+
+	var clientId string
+	if clientId, err = auth.HandleBasicAuth(r); err != nil {
 		webpush.WriteResponseError(w, err)
 		return
 	}

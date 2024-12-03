@@ -7,22 +7,39 @@ import (
 	"log"
 	"net/http"
 
-	"github.com/gorilla/schema"
+	api_utils "github.com/saschazar21/go-web-push-server/api/utils"
 	"github.com/saschazar21/go-web-push-server/auth"
 	"github.com/saschazar21/go-web-push-server/webpush"
 	"github.com/uptrace/bun"
 )
 
-var decoder = schema.NewDecoder()
-
-func decodeParams(r *http.Request) (params *webpush.WebPushDetails, err error) {
+func decodePushParams(r *http.Request) (params *webpush.WebPushDetails, err error) {
 	params = new(webpush.WebPushDetails)
 
+	decoder.IgnoreUnknownKeys(true)
 	if err = decoder.Decode(params, r.URL.Query()); err != nil {
 		log.Println(err)
 
 		err = webpush.NewResponseError(webpush.BAD_REQUEST_ERROR, http.StatusBadRequest)
 		return
+	}
+
+	return
+}
+
+func decodePushRecipient(r *http.Request) (recipientId string, err error) {
+	var names []string
+	var values []string
+
+	if values, names, err = api_utils.HandleURLRegex(r, "/api/v1/push/(?P<id>[^/]+)$"); err != nil || len(values) == 0 {
+		return
+	}
+
+	for i, name := range names {
+		if name == "id" {
+			recipientId = values[i]
+			break
+		}
 	}
 
 	return
@@ -54,9 +71,11 @@ func sendPushNotifications(subscriptions []webpush.PushSubscription, payload []b
 		notifications = append(notifications, push)
 	}
 
-	for _, notification := range notifications {
+	for i, notification := range notifications {
 		var errObj webpush.ErrorObject
 		var res *http.Response
+
+		log.Printf("sending push notification to recipient: %s of client: %s\n", subscriptions[i].RecipientId, subscriptions[i].ClientId)
 
 		if res, err = notification.Send(payload, params); err != nil {
 			return
@@ -71,11 +90,11 @@ func sendPushNotifications(subscriptions []webpush.PushSubscription, payload []b
 				statusCode = http.StatusBadRequest
 			}
 		case http.StatusNotFound:
-			errObj = webpush.NewErrorResponse(http.StatusNotFound, "Subscription Not Found").Errors[0]
+			errObj = webpush.NewErrorResponse(http.StatusNotFound, "subscription not found").Errors[0]
 		case http.StatusGone:
-			errObj = webpush.NewErrorResponse(http.StatusGone, "Subscription Expired").Errors[0]
+			errObj = webpush.NewErrorResponse(http.StatusGone, "subscription expired").Errors[0]
 		case http.StatusTooManyRequests:
-			errObj = webpush.NewErrorResponse(http.StatusTooManyRequests, "Too Many Requests").Errors[0]
+			errObj = webpush.NewErrorResponse(http.StatusTooManyRequests, "too many requests").Errors[0]
 			errObj.Detail = fmt.Sprintf("Retry after %s", res.Header.Get("Retry-After"))
 		default:
 			errObj = webpush.NewErrorResponse(http.StatusInternalServerError, "Internal Server Error").Errors[0]
@@ -101,9 +120,17 @@ func sendPushNotifications(subscriptions []webpush.PushSubscription, payload []b
 }
 
 func HandlePush(w http.ResponseWriter, r *http.Request) {
-	clientId, err := auth.HandleBasicAuth(r)
+	log.Println(r.URL.String())
+	var err error
 
-	if err != nil {
+	var recipientId string
+	if recipientId, err = decodePushRecipient(r); err != nil {
+		webpush.WriteResponseError(w, err)
+		return
+	}
+
+	var clientId string
+	if clientId, err = auth.HandleBasicAuth(r); err != nil {
 		webpush.WriteResponseError(w, err)
 		return
 	}
@@ -130,13 +157,17 @@ func HandlePush(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	params := new(webpush.WebPushDetails)
-	if params, err = decodeParams(r); err != nil {
+	var params *webpush.WebPushDetails
+	if params, err = decodePushParams(r); err != nil {
 		webpush.WriteResponseError(w, err)
 		return
 	}
 
 	params.ClientId = clientId
+
+	if recipientId != "" {
+		params.RecipientId = recipientId
+	}
 
 	if err = params.Validate(); err != nil {
 		webpush.WriteResponseError(w, err)

@@ -11,6 +11,7 @@ import (
 )
 
 func HandleSubscribe(w http.ResponseWriter, r *http.Request) {
+	log.Println(r.URL.String())
 	clientId, err := auth.HandleBasicAuth(r)
 
 	if err != nil {

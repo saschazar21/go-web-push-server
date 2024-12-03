@@ -1,11 +1,27 @@
 set -euxo pipefail
 
-# Create the functions directory
-mkdir -p "$(pwd)/functions"
+GOOS=linux
+GOARCH=amd64
+GO111MODULE=on
 
-# Build the functions
-GOBIN="$(pwd)/functions" go install ./...
-chmod +x "$(pwd)/functions/*"
+GOBIN=$(PWD)/functions go get ./...
 
-# Print the environment variables
-go env
+if [[ -z ./functions ]]; then
+  # create output directory
+  mkdir -p functions;
+fi
+
+for v in $(pwd)/cmd/*; do
+  for n in $v/*; do
+    # strip trailing slash
+    v=${v%*/}
+    n=${n%*/}
+
+    # extract directory name
+    v=${v##*/}
+    n=${n##*/}
+
+    # build binary
+    go build -o $(pwd)/functions/${v}_${n} $(pwd)/cmd/$v/$n;
+  done
+done
