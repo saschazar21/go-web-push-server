@@ -3,6 +3,9 @@
 build:
 	sh -c ./build.sh
 
+key:
+	go run cli/main.go
+
 test:
 	go test -coverprofile coverage.out ./...
 	
