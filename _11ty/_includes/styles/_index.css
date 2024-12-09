@@ -1,0 +1,147 @@
+:root {
+  /* CSS HSL */
+  --eerie-black: hsla(0, 0%, 11%, 1);
+  --onyx: hsla(255, 3%, 27%, 1);
+  --gray: hsla(240, 1%, 47%, 1);
+  --gray-2: hsla(240, 1%, 52%, 1);
+  --white: hsla(0, 0%, 100%, 1);
+  --lemon-chiffon: hsla(49, 100%, 89%, 1);
+  --dark-spring-green: hsla(141, 79%, 24%, 1);
+  --light-green: hsla(141, 79%, 69%, 1);
+  --light-red: hsla(358, 99%, 71%, 1);
+  --penn-red: hsla(358, 99%, 32%, 1);
+
+  --color-text: var(--eerie-black);
+  --color-background: var(--white);
+  --color-primary: var(--onyx);
+  --color-secondary: var(--gray);
+  --color-accent: var(--gray-2);
+  --color-notification: var(--lemon-chiffon);
+  --color-success: var(--dark-spring-green);
+  --color-success-bg: var(--light-green);
+  --color-error: var(--penn-red);
+  --color-error-bg: var(--light-red);
+
+  --container-width: 600px;
+
+  --space-s: 0.25rem;
+  --space-m: 0.5rem;
+  --space-l: 1rem;
+
+  --border-radius: 0.25rem;
+}
+
+@media (prefers-color-scheme: dark) {
+  :root {
+    --eerie-black: hsla(0, 0%, 100%, 1);
+    --onyx: hsla(255, 3%, 73%, 1);
+    --gray: hsla(240, 1%, 52%, 1);
+    --gray-2: hsla(240, 1%, 47%, 1);
+    --white: hsla(0, 0%, 11%, 1);
+    --lemon-chiffon: hsla(47, 96%, 20%, 1);
+    --light-green: hsla(141, 79%, 24%, 1);
+    --dark-spring-green: hsla(141, 79%, 69%, 1);
+    --penn-red: hsla(358, 99%, 71%, 1);
+    --light-red: hsla(358, 99%, 32%, 1);
+  }
+}
+
+body {
+  display: flex;
+  flex-direction: column;
+  margin: 0 var(--space-l);
+  max-width: var(--container-width);
+  min-height: 100vh;
+  color: var(--color-text);
+  background-color: var(--color-background);
+}
+
+main {
+  flex: 1 0 auto;
+}
+
+footer {
+  margin-top: var(--space-l);
+}
+
+picture {
+  display: block;
+}
+
+:focus {
+  outline: 1px dotted var(--color-primary);
+  outline-offset: 2px;
+}
+
+.hero-image {
+  margin-left: calc(var(--space-l) * -1);
+  margin-right: calc(var(--space-l) * -1);
+  width: 100vw;
+  height: auto;
+}
+
+.push-button {
+  display: flex;
+  justify-content: center;
+  align-items: center;
+  border: none;
+  border-radius: var(--border-radius);
+  padding: var(--space-m) var(--space-l);
+  width: 100%;
+  background-color: var(--color-accent);
+  color: var(--color-text);
+  font-size: var(--font-size-h4);
+  font-weight: 600;
+  text-transform: uppercase;
+  letter-spacing: var(--space-s);
+  transition: cubic-bezier(0.19, 1, 0.22, 1) 300ms background-color,
+    cubic-bezier(0.19, 1, 0.22, 1) 300ms color;
+}
+
+.push-button:hover {
+  background-color: var(--color-primary);
+  color: var(--color-background);
+}
+
+[data-success] {
+  background-color: var(--color-success-bg);
+  color: var(--color-text);
+}
+
+[data-error] {
+  background-color: var(--color-error-bg);
+  color: var(--color-text);
+}
+
+[data-success]:hover {
+  background-color: var(--color-success);
+  color: var(--color-background);
+}
+
+[data-error]:hover {
+  background-color: var(--color-error);
+  color: var(--color-background);
+}
+
+.push-button:disabled {
+  background-color: var(--color-secondary);
+  color: var(--color-text);
+}
+
+[data-notification] {
+  margin: 0 calc(var(--space-l) * -1);
+  padding: var(--space-m) var(--space-l);
+  background-color: var(--color-notification);
+  color: var(--color-text);
+}
+
+@media (min-width: 600px) {
+  body {
+    margin: 0 auto;
+  }
+
+  .hero-image {
+    margin: 0;
+    width: 600px;
+  }
+}

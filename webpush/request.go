@@ -2,6 +2,7 @@ package webpush
 
 import (
 	"bytes"
+	"crypto/tls"
 	"fmt"
 	"log"
 	"net/http"
@@ -17,6 +18,7 @@ type WebPushRequest struct {
 	Payload  []byte `validate:"required,lte=4096"`
 
 	*WithWebPushParams
+	*WithSalt
 }
 
 func (r *WebPushRequest) getOrigin() string {
@@ -59,9 +61,15 @@ func (r *WebPushRequest) Send() (res *http.Response, err error) {
 	}
 
 	req.Header = http.Header{
-		http.CanonicalHeaderKey("Authorization"):    {fmt.Sprintf("vapid t=%s", jwt), fmt.Sprintf("k=%s", key)},
+		http.CanonicalHeaderKey("Authorization"):    {fmt.Sprintf("vapid t=%s; k=%s", jwt, key)},
 		http.CanonicalHeaderKey("Content-Encoding"): {"aes128gcm"},
+		http.CanonicalHeaderKey("Content-Type"):     {"application/octet-stream"},
+		http.CanonicalHeaderKey("Crypto-Key"):       {fmt.Sprintf("keyid=p256dh;p256ecdsa=%s", key)},
+		http.CanonicalHeaderKey("Encryption"):       {fmt.Sprintf("keyid=p256dh;salt=%s", r.WithSalt.String())},
 		http.CanonicalHeaderKey("TTL"):              {fmt.Sprintf("%d", r.TTL)},
+		// Microsoft Edge header values: https://learn.microsoft.com/en-us/windows/apps/design/shell/tiles-and-notifications/push-request-response-headers#request-parameters
+		"X-WNS-Type":         {"wns/raw"},
+		"X-WNS-Cache-Policy": {"cache"},
 	}
 
 	if r.Topic != "" {
@@ -72,7 +80,13 @@ func (r *WebPushRequest) Send() (res *http.Response, err error) {
 		req.Header.Add("Urgency", r.Urgency)
 	}
 
-	if res, err = http.DefaultClient.Do(req); err != nil {
+	client := &http.Client{
+		Transport: &http.Transport{
+			TLSNextProto: make(map[string]func(authority string, c *tls.Conn) http.RoundTripper),
+		},
+	}
+
+	if res, err = client.Do(req); err != nil {
 		log.Println(err)
 
 		return nil, NewResponseError(INTERNAL_SERVER_ERROR, http.StatusInternalServerError)

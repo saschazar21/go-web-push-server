@@ -1,0 +1,41 @@
+---
+layout: default.njk
+---
+
+<picture>
+  <source type="image/avif" sizes="(min-width: 600px) 600px, 100%" srcset="/assets/img/og-image_640.avif 320w, /assets/img/og-image_960.avif 480w, /assets/img/og-image.avif 600w">
+  <source type="image/webp" sizes="(min-width: 600px) 600px, 100%" srcset="/assets/img/og-image_640.webp 320w, /assets/img/og-image_960.webp 480w, /assets/img/og-image.webp 600w">
+  <source type="image/jpeg" sizes="(min-width: 600px) 600px, 100%" srcset="/assets/img/og-image_640.jpg 320w, /assets/img/og-image_960.jpg 480w, /assets/img/og-image.jpg 600w">
+  <img class="hero-image" src="/assets/img/og-image_640.jpg" width="600px" height="323px" alt="A pencil-drawn, open envelope, containing a letter saying 'web push server', with a key on top, in front of a wireframe globe">
+</picture>
+
+<h1>{{ pkg.title }}</h1>
+
+<p class="lead">
+  {{ pkg.description }}
+</p>
+
+<p x-data="subscription" x-init="await init()">
+  <template x-if="isDisabled">
+    <button class="push-button" type="button" :disabled="isDisabled">Loading&hellip;</button>
+  </template>
+  <template x-if="!isDisabled && !isSubscribed">
+    <button class="push-button" type="button" @click="subscribe()" data-success>Subscribe</button>
+  </template>
+  <template x-if="!isDisabled && isSubscribed">
+    <button class="push-button" type="button" @click="unsubscribe()" data-error>Unsubscribe</button>
+  </template>
+  <br />
+  <span>Click the above button to enable push messages. You can revoke your subscription at any time by clicking "Unsubscribe".</span>
+</p>
+
+<p data-notification>
+  <strong>⚠️ Caution:</strong> Push messages likely do not work in incognito mode. Make sure to allow notifications for this site. Check the browser console for more information.
+</p>
+
+<script>
+  window.VAPID_PUBLIC_KEY = "{{ vapid.publicKey | safe }}";
+
+  {% include 'js/service-worker.js' %}
+  {% include 'js/alpine.js' %}
+</script>

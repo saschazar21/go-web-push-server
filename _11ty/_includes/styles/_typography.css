@@ -1,0 +1,81 @@
+:root {
+  --font-sans: -apple-system, BlinkMacSystemFont, avenir next, avenir, segoe ui,
+    helvetica neue, helvetica, Cantarell, Ubuntu, roboto, noto, arial,
+    sans-serif;
+  --font-serif: Iowan Old Style, Apple Garamond, Baskerville, Times New Roman,
+    Droid Serif, Times, Source Serif Pro, serif, Apple Color Emoji,
+    Segoe UI Emoji, Segoe UI Symbol;
+  --font-mono: Menlo, Consolas, Monaco, Liberation Mono, Lucida Console,
+    monospace;
+
+  --font-size-h1: 2.618em;
+  --font-size-h2: 2.126em;
+  --font-size-h3: 1.618em;
+  --font-size-h4: 1.272em;
+  --font-size-small: 0.786em;
+}
+
+@media (min-width: 600px) {
+  :root {
+    --font-size-h1: 4.519em;
+    --font-size-h2: 3.099em;
+    --font-size-h3: 2.126em;
+    --font-size-h4: 1.458em;
+    --font-size-small: 0.686em;
+  }
+}
+
+html {
+  font-size: 16px;
+}
+
+body {
+  font-family: var(--font-sans);
+  font-size: 1rem;
+  line-height: 1.5;
+}
+
+p {
+  margin-bottom: 1.3em;
+}
+
+h1,
+h2,
+h3,
+h4 {
+  margin: 1.414em 0 0.5em;
+  font-weight: 600;
+  line-height: 1.2;
+}
+
+h1 {
+  margin-top: 0;
+  font-size: var(--font-size-h1);
+}
+
+h2 {
+  font-size: var(--font-size-h2);
+}
+
+h3 {
+  font-size: var(--font-size-h3);
+}
+
+h4 {
+  font-size: var(--font-size-h4);
+}
+
+small,
+.font_small {
+  font-size: var(--font-size-small);
+}
+
+a,
+a:hover,
+a:visited {
+  color: var(--color-primary);
+}
+
+.lead {
+  font-size: var(--font-size-h4);
+}

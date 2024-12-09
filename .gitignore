@@ -1,4 +1,6 @@
 functions/
+public/
+deno.lock
 
 # Created by https://www.toptal.com/developers/gitignore/api/go,vercel,node
 # Edit at https://www.toptal.com/developers/gitignore?templates=go,vercel,node

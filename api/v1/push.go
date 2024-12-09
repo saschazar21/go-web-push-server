@@ -104,6 +104,16 @@ func sendPushNotifications(subscriptions []webpush.PushSubscription, payload []b
 			statusCode = http.StatusInternalServerError
 		}
 
+		buf := new(bytes.Buffer)
+		buf.ReadFrom(res.Body)
+
+		log.Printf("[HTTP %d]: push notification for recipient: %s failed. Reason:\n%s\n", res.StatusCode, subscriptions[i].RecipientId, buf.String())
+		log.Println(res.Header)
+
+		if errObj.Detail == "" {
+			errObj.Detail = buf.String()
+		}
+
 		errObj.Meta = &webpush.ErrorMeta{
 			Endpoint: notification.Endpoint,
 		}

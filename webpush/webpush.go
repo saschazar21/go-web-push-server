@@ -104,6 +104,9 @@ func (p *WebPush) Send(payload []byte, params *WithWebPushParams) (res *http.Res
 		p.Endpoint,
 		buf,
 		params,
+		&WithSalt{
+			p.Salt,
+		},
 	}
 
 	return req.Send()

@@ -51,6 +51,9 @@ MK468C66gOKehSQqxUQ8+HCI/g==
 					3600,
 					"normal",
 				},
+				&WithSalt{
+					make([]byte, 16),
+				},
 			},
 			false,
 		}, {
@@ -62,6 +65,9 @@ MK468C66gOKehSQqxUQ8+HCI/g==
 					"",
 					-1,
 					"normal",
+				},
+				&WithSalt{
+					make([]byte, 16),
 				},
 			},
 			false,
@@ -75,6 +81,9 @@ MK468C66gOKehSQqxUQ8+HCI/g==
 					MAX_TTL_VALUE + 2,
 					"normal",
 				},
+				&WithSalt{
+					make([]byte, 16),
+				},
 			},
 			false,
 		}, {
@@ -86,6 +95,9 @@ MK468C66gOKehSQqxUQ8+HCI/g==
 					"",
 					3600,
 					"normal",
+				},
+				&WithSalt{
+					make([]byte, 16),
 				},
 			},
 			true,
@@ -99,6 +111,9 @@ MK468C66gOKehSQqxUQ8+HCI/g==
 					3600,
 					"normal",
 				},
+				&WithSalt{
+					make([]byte, 16),
+				},
 			},
 			true,
 		}, {
@@ -110,6 +125,9 @@ MK468C66gOKehSQqxUQ8+HCI/g==
 					"",
 					3600,
 					"normaly",
+				},
+				&WithSalt{
+					make([]byte, 16),
 				},
 			},
 			true,

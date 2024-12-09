@@ -1,19 +1,28 @@
 {
   "name": "@saschazar/go-web-push-server",
+  "title": "go-web-push-server",
   "version": "1.0.0",
-  "description": "",
+  "description": "A web push server written in Go",
   "scripts": {
     "test": "echo \"Error: no test specified\" && exit 1"
   },
+  "type": "module",
   "keywords": [],
   "author": {
     "name": "Sascha Zarhuber",
     "email": "saschazar21@yahoo.de",
     "url": "https://sascha.work"
   },
+  "repository": {
+    "type": "git",
+    "url": "https://github.com/saschazar21/go-web-push-server"
+  },
   "license": "MIT",
   "dependencies": {
+    "@11ty/eleventy": "^3.0.0",
+    "dotenv": "^16.4.7",
     "netlify-cli": "^17.37.2",
-    "vercel": "^39.1.2"
+    "vercel": "^39.1.2",
+    "workbox-cli": "^7.3.0"
   }
 }

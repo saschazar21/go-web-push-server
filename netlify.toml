@@ -7,7 +7,14 @@
   GO_IMPORT_PATH = "github.com/saschazar21/go-web-push-server"
   GO111MODULE = "on"
   GOARCH = "amd64"
+  GODEBUG = "http2client=0"
   GOOS = "linux"
+
+[[redirects]]
+  from = "/api/v1/push"
+  to = "/.netlify/functions/v1_push"
+  status = 200
+  force = true
 
 [[redirects]]
   from = "/api/v1/push/:id"
@@ -22,7 +29,30 @@
   force = true
 
 [[redirects]]
+  from = "/api/v1/unsubscribe"
+  to = "/.netlify/functions/v1_unsubscribe"
+  status = 200
+  force = true
+
+[[redirects]]
   from = "/api/v1/unsubscribe/:id"
   to = "/.netlify/functions/v1_unsubscribe"
+  status = 200
+  force = true
+
+
+# Only for demo purposes, check source code in netlify/edge-functions/demo.js
+
+[[redirects]]
+  from = "/demo/subscribe"
+  to = "/.netlify/edge-functions/demo/subscribe"
+  status = 200
+  force = true
+
+# Only for demo purposes, check source code in netlify/edge-functions/dad-joke.js
+
+[[redirects]]
+  from = "/demo/dad-joke"
+  to = "/.netlify/edge-functions/demo/dad-joke"
   status = 200
   force = true

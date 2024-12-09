@@ -20,7 +20,12 @@ type pushSubscriptionKeys struct {
 }
 
 func (k *pushSubscriptionKeys) Save(ctx context.Context, db bun.IDB) (err error) {
-	if _, err = db.NewInsert().Model(k).Exec(ctx); err != nil {
+	if _, err = db.
+		NewInsert().
+		Model(k).
+		On("CONFLICT (p256dh) DO UPDATE").
+		Set("auth_secret = EXCLUDED.auth_secret").
+		Exec(ctx); err != nil {
 		log.Println(err)
 
 		return NewResponseError(INTERNAL_SERVER_ERROR, http.StatusInternalServerError)
@@ -69,7 +74,14 @@ func (s *PushSubscription) Save(ctx context.Context, db bun.IDB) (err error) {
 
 	s.Keys.Endpoint = s.Endpoint
 
-	if _, err = db.NewInsert().Model(s).Exec(ctx); err != nil {
+	if _, err = db.
+		NewInsert().
+		Model(s).
+		On("CONFLICT (endpoint) DO UPDATE").
+		Set("expiration_time = EXCLUDED.expiration_time").
+		Set("client_id = EXCLUDED.client_id").
+		Set("recipient_id = EXCLUDED.recipient_id").
+		Exec(ctx); err != nil {
 		log.Println(err)
 
 		return NewResponseError(INTERNAL_SERVER_ERROR, http.StatusInternalServerError)

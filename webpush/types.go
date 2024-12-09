@@ -3,6 +3,7 @@ package webpush
 import (
 	"database/sql"
 	"database/sql/driver"
+	"encoding/base64"
 	"fmt"
 	"log"
 	"net/http"
@@ -109,6 +110,14 @@ var _ driver.Valuer = (*EpochMillis)(nil)
 
 func (e EpochMillis) Value() (val driver.Value, err error) {
 	return e.Time, nil
+}
+
+type WithSalt struct {
+	Salt []byte `json:"salt" validate:"required,len=16"`
+}
+
+func (s *WithSalt) String() string {
+	return base64.RawURLEncoding.EncodeToString(s.Salt)
 }
 
 type WithWebPushParams struct {

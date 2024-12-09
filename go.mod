@@ -1,4 +1,4 @@
-module github.com/saschazar21/go-web-push-server
+module v1
 
 go 1.22.2
 
@@ -84,3 +84,10 @@ require (
 	gopkg.in/yaml.v3 v3.0.1 // indirect
 	mellium.im/sasl v0.3.2 // indirect
 )
+
+require (
+	github.com/saschazar21/go-web-push-server v0.0.0-unpublished
+	github.com/vercel/go-bridge v0.0.0-20221108222652-296f4c6bdb6d
+)
+
+replace github.com/saschazar21/go-web-push-server => ./
