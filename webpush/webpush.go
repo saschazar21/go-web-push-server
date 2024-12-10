@@ -107,6 +107,9 @@ func (p *WebPush) Send(payload []byte, params *WithWebPushParams) (res *http.Res
 		&WithSalt{
 			p.Salt,
 		},
+		&WithPublicKey{
+			p.PublicKey,
+		},
 	}
 
 	return req.Send()
@@ -210,12 +213,10 @@ func generateSalt() (salt []byte, err error) {
 	return
 }
 
-func getPrivateKey() (key *ecdh.PrivateKey, err error) {
-	pemEncoded := os.Getenv(VAPID_PRIVATE_KEY_ENV)
-
+func generatePrivateKey() (key *ecdh.PrivateKey, err error) {
 	var k *vapidKey
 
-	if k, err = DecodeFromPEM(pemEncoded); err != nil {
+	if k, err = GenerateVapidKey(); err != nil {
 		log.Println(err)
 
 		return key, NewResponseError(INTERNAL_SERVER_ERROR, http.StatusInternalServerError)
@@ -249,7 +250,7 @@ func NewWebPush(sub *PushSubscription) (p *WebPush, err error) {
 
 	var privateKey *ecdh.PrivateKey
 
-	if privateKey, err = getPrivateKey(); err != nil {
+	if privateKey, err = generatePrivateKey(); err != nil {
 		return
 	}
 

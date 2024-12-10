@@ -1,6 +1,7 @@
 package webpush
 
 import (
+	"crypto/ecdh"
 	"database/sql"
 	"database/sql/driver"
 	"encoding/base64"
@@ -110,6 +111,16 @@ var _ driver.Valuer = (*EpochMillis)(nil)
 
 func (e EpochMillis) Value() (val driver.Value, err error) {
 	return e.Time, nil
+}
+
+type WithPublicKey struct {
+	*ecdh.PublicKey `json:"publicKey" validate:"required"`
+}
+
+func (w *WithPublicKey) String() string {
+	bytes := w.PublicKey.Bytes()
+
+	return base64.RawURLEncoding.EncodeToString(bytes)
 }
 
 type WithSalt struct {

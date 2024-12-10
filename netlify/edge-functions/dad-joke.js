@@ -75,7 +75,7 @@ export default async (req) => {
     title: "Today's Dad Joke",
     body: joke.joke,
     url: "https://icanhazdadjoke.com/j/" + joke.id,
-    icon: "/assets/icon.png",
+    icon: "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f3f0.png",
   };
 
   return fetch(url, {

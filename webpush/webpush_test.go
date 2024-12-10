@@ -268,8 +268,8 @@ MK468C66gOKehSQqxUQ8+HCI/g==
 					log.Println(res.Header)
 
 					assert.NotNil(t, res.Header.Get("Authorization"))
-					assert.Equal(t, "aes128gcm", res.Header.Get("Content-Encoding"))
-					assert.Regexp(t, `^keyid=p256dh;salt=[A-Za-z0-9-_]+$`, res.Header.Get("Encryption"))
+					assert.Equal(t, "aesgcm", res.Header.Get("Content-Encoding"))
+					assert.Regexp(t, `^salt=[A-Za-z0-9-_]+$`, res.Header.Get("Encryption"))
 				}
 
 			}

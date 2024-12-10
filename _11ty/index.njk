@@ -17,12 +17,15 @@ layout: default.njk
 
 <p x-data="subscription" x-init="await init()">
   <template x-if="isDisabled">
-    <button class="push-button" type="button" :disabled="isDisabled">Loading&hellip;</button>
+    <button class="push-button" type="button" :disabled="isDisabled">Initializing&hellip;</button>
   </template>
-  <template x-if="!isDisabled && !isSubscribed">
+  <template x-if="!isDisabled && isLoading">
+    <button class="push-button" type="button" :disabled="isLoading">Loading&hellip;</button>
+  </template>
+  <template x-if="!isDisabled && !isLoading && !isSubscribed">
     <button class="push-button" type="button" @click="subscribe()" data-success>Subscribe</button>
   </template>
-  <template x-if="!isDisabled && isSubscribed">
+  <template x-if="!isDisabled && !isLoading && isSubscribed">
     <button class="push-button" type="button" @click="unsubscribe()" data-error>Unsubscribe</button>
   </template>
   <br />

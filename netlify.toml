@@ -40,6 +40,12 @@
   status = 200
   force = true
 
+# Only for demo purposes, return valid content-type header for the web manifest
+
+[[headers]]
+  for = "/manifest.webmanifest"
+    [headers.values]
+    Content-Type = "application/manifest+json"
 
 # Only for demo purposes, check source code in netlify/edge-functions/demo.js
 

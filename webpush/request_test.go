@@ -40,6 +40,9 @@ MK468C66gOKehSQqxUQ8+HCI/g==
 		testServer.Close()
 	}()
 
+	vapidKey, _ := GenerateVapidKey()
+	key, _ := vapidKey.ECDH()
+
 	tests := []test{
 		{
 			"validates",
@@ -53,6 +56,9 @@ MK468C66gOKehSQqxUQ8+HCI/g==
 				},
 				&WithSalt{
 					make([]byte, 16),
+				},
+				&WithPublicKey{
+					key.PublicKey(),
 				},
 			},
 			false,
@@ -69,6 +75,9 @@ MK468C66gOKehSQqxUQ8+HCI/g==
 				&WithSalt{
 					make([]byte, 16),
 				},
+				&WithPublicKey{
+					key.PublicKey(),
+				},
 			},
 			false,
 		}, {
@@ -83,6 +92,9 @@ MK468C66gOKehSQqxUQ8+HCI/g==
 				},
 				&WithSalt{
 					make([]byte, 16),
+				},
+				&WithPublicKey{
+					key.PublicKey(),
 				},
 			},
 			false,
@@ -99,6 +111,9 @@ MK468C66gOKehSQqxUQ8+HCI/g==
 				&WithSalt{
 					make([]byte, 16),
 				},
+				&WithPublicKey{
+					key.PublicKey(),
+				},
 			},
 			true,
 		}, {
@@ -114,6 +129,9 @@ MK468C66gOKehSQqxUQ8+HCI/g==
 				&WithSalt{
 					make([]byte, 16),
 				},
+				&WithPublicKey{
+					key.PublicKey(),
+				},
 			},
 			true,
 		}, {
@@ -128,6 +146,9 @@ MK468C66gOKehSQqxUQ8+HCI/g==
 				},
 				&WithSalt{
 					make([]byte, 16),
+				},
+				&WithPublicKey{
+					key.PublicKey(),
 				},
 			},
 			true,

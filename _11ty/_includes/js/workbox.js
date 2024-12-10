@@ -2,7 +2,7 @@ importScripts(
   "https://cdn.jsdelivr.net/npm/workbox-sw@7.3.0/build/workbox-sw.min.js"
 );
 
-self.addEventListener("notificationclick", (event) => {
+function handleNotificationClick(event) {
   event.notification.close();
 
   event.waitUntil(
@@ -14,15 +14,17 @@ self.addEventListener("notificationclick", (event) => {
         }
       }
 
-      if (clients.openWindow) {
-        return clients.openWindow("/");
+      if (clients.openWindow && event.notification.data?.url) {
+        return clients.openWindow(event.data.url);
       }
     })
   );
-});
+}
+
+self.addEventListener("notificationclick", handleNotificationClick);
 
 // inspired by: https://github.com/GoogleChrome/samples/blob/gh-pages/push-messaging-and-notifications/service-worker.js
-self.addEventListener("push", (event) => {
+function handlePushEvent(event) {
   let data;
   try {
     data = {
@@ -40,19 +42,36 @@ self.addEventListener("push", (event) => {
     };
   }
 
-  event.waitUntil(
-    self.registration.showNotification(data.title, {
-      body: data.body,
-      icon: data.icon,
-      tag: data.tag,
-    })
-  );
-});
+  const showNotification = self.registration.showNotification(data.title, {
+    body: data.body,
+    icon: data.icon,
+    tag: data.tag,
+    renotify: data.renotify ?? true,
+  });
 
-self.addEventListener("message", (event) => {
+  event.waitUntil(showNotification);
+}
+
+self.addEventListener("push", handlePushEvent);
+
+function handleMessageEvent(event) {
   if (event.data && event.data.type === "SKIP_WAITING") {
     self.skipWaiting();
   }
-});
+}
+
+self.addEventListener("message", handleMessageEvent);
+
+workbox.routing.registerRoute(
+  /^https:\/\/cdn\.jsdelivr\.net\/npm\/.+$/,
+  new workbox.strategies.CacheFirst({
+    cacheName: "jsdelivr-cache",
+    plugins: [
+      new workbox.expiration.ExpirationPlugin({
+        maxEntries: 30,
+      }),
+    ],
+  })
+);
 
 workbox.precaching.precacheAndRoute(self.__WB_MANIFEST);

@@ -14,6 +14,7 @@ function urlB64ToUint8Array(base64String) {
 document.addEventListener("alpine:init", () => {
   Alpine.data("subscription", () => ({
     isDisabled: true,
+    isLoading: false,
     isSubscribed: false,
     reg: null,
     async init() {
@@ -42,6 +43,8 @@ document.addEventListener("alpine:init", () => {
         return;
       }
 
+      this.isLoading = true;
+
       const options = {
         userVisibleOnly: true,
         applicationServerKey: urlB64ToUint8Array(window.VAPID_PUBLIC_KEY),
@@ -57,10 +60,12 @@ document.addEventListener("alpine:init", () => {
 
       if (res.status === 201) {
         this.isSubscribed = true;
+        this.isLoading = false;
         return;
       }
 
       console.error("Failed to register push subscription!");
+      this.isLoading = false;
 
       // TODO: show notification
     },
@@ -69,15 +74,20 @@ document.addEventListener("alpine:init", () => {
         return;
       }
 
+      this.isLoading = true;
+
       const subscription = await this.reg.pushManager.getSubscription();
 
       if (!subscription) {
         this.isSubscribed = false;
+        this.isLoading = false;
         return;
       }
 
       await subscription.unsubscribe();
+
       this.isSubscribed = false;
+      this.isLoading = false;
 
       // TODO: show notification
     },
