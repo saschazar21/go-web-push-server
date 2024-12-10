@@ -39,16 +39,13 @@ export default async (req) => {
 
   const headers = {
     "content-type": "application/json",
-    authorization: `Basic ${btoa(
-      `demo:${Netlify.env.get("BASIC_AUTH_PASSWORD")}`
-    )}`,
+    authorization: `Basic ${btoa(`demo:${process.env.BASIC_AUTH_PASSWORD}`)}`,
   };
 
   const res = await fetch(url, {
     body: JSON.stringify(subscription),
     method: "POST",
     headers,
-    credentials: "same-origin",
   });
 
   if (res.ok) {
@@ -67,5 +64,5 @@ export default async (req) => {
 };
 
 export const config = {
-  path: "/demo/subscribe",
+  runtime: "edge",
 };

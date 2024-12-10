@@ -55,6 +55,7 @@ document.addEventListener("alpine:init", () => {
       const res = await fetch("/demo/subscribe", {
         method: "POST",
         body: JSON.stringify(subscription),
+        credentials: "same-origin",
         headers: { "content-type": "application/json" },
       });
 
