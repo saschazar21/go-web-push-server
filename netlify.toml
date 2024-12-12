@@ -10,6 +10,13 @@
   GODEBUG = "http2client=0"
   GOOS = "linux"
 
+[template.environment]
+  POSTGRES_CONNECTION_STRING = "Set this to your PostgreSQL connection string, e.g. postgres://..."
+  VAPID_EXPIRY_DURATION = "The VAPID JWT lifetime in seconds"
+  VAPID_PRIVATE_KEY = "The VAPID private key in PEM format"
+  VAPID_SUBJECT = "A contact e-mail address for the VAPID JWT"
+  BASIC_AUTH_PASSWORD = "A password for the basic auth strategy on /api/v1 routes"
+
 [[redirects]]
   from = "/api/v1/push"
   to = "/.netlify/functions/v1_push"

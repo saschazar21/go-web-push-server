@@ -7,8 +7,7 @@ function handleNotificationClick(event) {
 
   event.waitUntil(
     clients.matchAll({ type: "window" }).then((clientList) => {
-      for (let i = 0; i < clientList.length; i++) {
-        const client = clientList[i];
+      for (const client of clientList) {
         if ("focus" in client) {
           return client.focus();
         }

@@ -6,6 +6,15 @@
  *  @returns {Promise<Response>}
  *  */
 export default async (req) => {
+  if (!process.env.ENABLE_DEMO) {
+    return new Response("Not Found", {
+      status: 404,
+      headers: {
+        "content-type": "text/plain",
+      },
+    });
+  }
+
   if (req.method !== "PUT") {
     return new Response("Method Not Allowed", {
       headers: {

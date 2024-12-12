@@ -1,0 +1,298 @@
+openapi: 3.0.3
+info:
+  title: go-web-push-server - OpenAPI 3.0
+  description: |-
+    `go-web-push-server` is a web push server written in Go. It provides a RESTful API to manage web push subscriptions and send push notifications to them.
+
+    It may be used as a standalone server, or as a part of a larger application, e.g. a web application or a backend service.
+
+    Don't want the full environment? The contained [`webpush`](webpush) Go package provides as little or as much functionality as currently needed.
+  contact:
+    email: saschazar21@yahoo.de
+  license:
+    name: MIT
+    url: https://saschazar.mit-license.org
+  version: 1.0.0
+servers:
+  - url: https://go-webpush.netlify.app/api/v1
+tags:
+  - name: push
+    description: Send web push notifications
+    externalDocs:
+      description: Find out more
+      url: http://swagger.io
+paths:
+  /push:
+    post:
+      tags:
+        - push
+      summary: Broadcast push notification.
+      description: Send a web push notification to all subscribers of a client.
+      operationId: pushAll
+      parameters:
+        - name: ttl
+          in: query
+          description: Amount of seconds the notification is retained on the push server.
+          required: true
+          schema:
+            type: integer
+            format: uint16
+        - name: topic
+          in: query
+          description: Push notifications containing a topic replace any notifications containing the same topic, which have not yet been delivered.
+          schema:
+            type: string
+        - name: urgency
+          in: query
+          description: The urgency of a push notification. The end device may decide based on the urgency whether to display or delay a notification.
+          schema:
+            type: string
+            default: normal
+            enum:
+              - very-low
+              - low
+              - normal
+              - high
+      requestBody:
+        description: The push notification's contents.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PushNotification"
+          text/plain:
+            schema:
+              type: string
+        required: true
+      responses:
+        "201":
+          description: Created
+        "401":
+          description: Authorization header omitted.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Wrong authorization credentials.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Client not found, or no notifications assigned to client.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "410":
+          description: One or more push subscriptions have become void.
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /push/{id}:
+    post:
+      tags:
+        - push
+      summary: Send push notification.
+      description: Send a web push notification to a specific subscriber of a client.
+      operationId: pushById
+      parameters:
+        - name: id
+          in: path
+          description: The recipient's ID.
+          required: true
+          schema:
+            type: string
+        - name: ttl
+          in: query
+          description: Amount of seconds the notification is retained on the push server.
+          required: true
+          schema:
+            type: integer
+            format: uint16
+        - name: topic
+          in: query
+          description: Push notifications containing a topic replace any notifications containing the same topic, which have not yet been delivered.
+          schema:
+            type: string
+        - name: urgency
+          in: query
+          description: The urgency of a push notification. The end device may decide based on the urgency whether to display or delay a notification.
+          schema:
+            type: string
+            default: normal
+            enum:
+              - very-low
+              - low
+              - normal
+              - high
+      requestBody:
+        description: The push notification's contents.
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/PushNotification"
+          text/plain:
+            schema:
+              type: string
+        required: true
+      responses:
+        "201":
+          description: Created
+        "401":
+          description: Authorization header omitted
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "403":
+          description: Wrong authorization credentials
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "404":
+          description: Client not found, or no notifications assigned to client
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+        "410":
+          description: One or more push subscriptions have become void
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /subscribe:
+    post:
+      tags:
+        - subscribe
+      summary: Add a new push subscription to the database.
+      operationId: subscribe
+      requestBody:
+        description: Information about a new subscription to be added to the database
+        content:
+          application/json:
+            schema:
+              $ref: "#/components/schemas/SubscriptionRequest"
+      responses:
+        "201":
+          description: Created
+        "400":
+          description: Malformatted data
+          content:
+            application/json:
+              schema:
+                $ref: "#/components/schemas/ErrorResponse"
+  /unsubscribe:
+    delete:
+      tags:
+        - unsubscribe
+      summary: Deletes all subscriptions of a client from the database.
+      operationId: unsubscribeAll
+      responses:
+        "204":
+          description: No Content
+  /unsubscribe/{id}:
+    delete:
+      tags:
+        - unsubscribe
+      summary: Deletes all subscriptions of a client from the database.
+      operationId: unsubscribeById
+      parameters:
+        - name: id
+          in: path
+          required: true
+          schema:
+            type: string
+      responses:
+        "204":
+          description: No Content
+components:
+  schemas:
+    ErrorObject:
+      type: object
+      properties:
+        status:
+          type: integer
+          format: uint8
+          example: 400
+        code:
+          type: string
+        title:
+          type: string
+          example: "Test Error"
+        detail:
+          type: string
+          example: "Error Description"
+        meta:
+          type: object
+          properties:
+            endpoint:
+              type: string
+              example: "https://wns2-par02p.notify.windows.com/w/?token=BQYAAAD5k7SrgAQc4ujYrljNI2FbcNK4vL3u9bzsvB8RHQV5LgdrLkv6o%2bxDNepYFS17oV05kBqWj4naBpAk%2bhRs5cWAIcDab1y4%2fXH94BQAyQaOCUUnc4XtJJbDLiEeqf%2boKgbqj3UweAQCadVUiA%2bSukHMLYq4TeiDYRJ7TTAUNEKeHXjtVaMl%2fzhxqJKeI5p5wZ1RLmIf%2bfiS5%2f7DpZFsnMvwd4gRUeFFI5CeJYi7nTalv9lciTjbvVCr1nxRwjVqHN3asXB%2bcbydyBktxdSu1%2bQeSdxMA8MGvLI%2bIztYn3i2emdtJTRSI76zWli011kUDz5ni6J0X%2fQFcuntzZ8%2bwuAP"
+    ErrorResponse:
+      type: object
+      properties:
+        errors:
+          type: array
+          items:
+            $ref: "#/components/schemas/ErrorObject"
+    PushNotification:
+      type: object
+      properties:
+        title:
+          type: string
+          example: "Test Notification"
+        body:
+          type: string
+          example: "This is a test notification"
+        icon:
+          type: string
+          example: "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f3c4.png"
+        tag:
+          type: string
+          example: "test-tag"
+    PushSubscriptionKeys:
+      type: object
+      properties:
+        p256dh:
+          type: string
+          description: The P-256 Diffie-Hellman public key of the subscription recipient
+          example: "BPZ_GnkGFYfUcY0D0yMWcAQIuvQfV5tSw_dd7iIQktNR1dhdDflA1eQyJT-0ZSwpDO43mNbBwogEMTh7TCSkuP0"
+        auth:
+          type: string
+          description: The auth key of the subscription recipient
+          example: "DGv6ra1nlYgDCS1FRnbzlw"
+    PushSubscription:
+      type: object
+      properties:
+        endpoint:
+          type: string
+          description: The URL endpoint of the subscription recipient
+          example: "https://wns2-par02p.notify.windows.com/w/?token=BQYAAAD5k7SrgAQc4ujYrljNI2FbcNK4vL3u9bzsvB8RHQV5LgdrLkv6o%2bxDNepYFS17oV05kBqWj4naBpAk%2bhRs5cWAIcDab1y4%2fXH94BQAyQaOCUUnc4XtJJbDLiEeqf%2boKgbqj3UweAQCadVUiA%2bSukHMLYq4TeiDYRJ7TTAUNEKeHXjtVaMl%2fzhxqJKeI5p5wZ1RLmIf%2bfiS5%2f7DpZFsnMvwd4gRUeFFI5CeJYi7nTalv9lciTjbvVCr1nxRwjVqHN3asXB%2bcbydyBktxdSu1%2bQeSdxMA8MGvLI%2bIztYn3i2emdtJTRSI76zWli011kUDz5ni6J0X%2fQFcuntzZ8%2bwuAP"
+        expirationTime:
+          type: integer
+          format: int64
+          description: The epoch time stamp in milliseconds, when the subscription becomes void
+        keys:
+          $ref: "#/components/schemas/PushSubscriptionKeys"
+    SubscriptionRequest:
+      type: object
+      properties:
+        clientId:
+          type: string
+          example: "Test Notification"
+        id:
+          type: string
+          example: "This is a test notification"
+        subscription:
+          $ref: "#/components/schemas/PushSubscription"
+  securitySchemes:
+    v1_auth:
+      scheme: basic
+      type: http
+
+security:
+  - v1_auth: []

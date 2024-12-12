@@ -1,9 +1,14 @@
 .PHONY: test clean
 
-build:
+build: build_website
+	mkdir -p public
 	sh -c ./build.sh
+
+build_website:
+ifdef ENABLE_DEMO
 	npx eleventy
 	npx workbox injectManifest workbox-config.cjs
+endif
 
 key:
 	go run cli/main.go
