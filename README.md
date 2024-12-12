@@ -135,7 +135,7 @@ func main() {
   }
 
   // Connect to the database, be sure to have POSTGRES_CONNECTION_STRING set
-	db, _ := webpush.ConnectToDatabase()
+  db, _ := webpush.ConnectToDatabase()
 
   // Store the subscription in the database
   err := subscription.Save(ctx, db)
