@@ -10,9 +10,10 @@ on:
       - synchronize
 
 jobs:
-  test:
+  setup:
     uses: ./.github/workflows/setup.yml
 
+  test:
     steps:
       - name: Test
         run: make test
