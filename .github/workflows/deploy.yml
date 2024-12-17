@@ -1,12 +1,26 @@
-name: Set up
+name: Deploy
 
 on:
-  workflow_call:
+  push:
+    branches:
+      - main
+  pull_request:
+    types:
+      - opened
+      - synchronize
 
 jobs:
-  setup:
-    name: Set up build environment
+  test:
+    uses: ./.github/workflows/test.yml
+
+  deploy-netlify:
+    name: "Deploy to Netlify"
+    permissions:
+      pull-requests: write
     runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, 'skip ci')"
+    needs:
+      - test
 
     steps:
       - name: Check out repository
@@ -19,6 +33,9 @@ jobs:
         with:
           node-version-file: ".tool-versions"
           cache: "pnpm"
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
 
       - name: Install dependencies
         run: pnpm install

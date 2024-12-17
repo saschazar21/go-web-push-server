@@ -1,22 +1,26 @@
-name: Deploy
+name: Test
 
 on:
-  push:
-    branches:
-      - main
-  pull_request:
-    types:
-      - opened
-      - synchronize
+  workflow_call:
 
 jobs:
-  setup:
-    uses: ./.github/workflows/setup.yml
-
   test:
-    name: Run unit tests
+    name: Set up build environment
     runs-on: ubuntu-latest
 
     steps:
+      - name: Check out repository
+        uses: actions/checkout@v2
+        with:
+          fetch-depth: 0
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          check-latest: true
+          cache-dependency-path: |
+            go.sum
+
       - name: Test
-        run: make test
+          run: make test
