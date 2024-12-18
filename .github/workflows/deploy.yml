@@ -88,7 +88,9 @@ jobs:
             ${{ steps.var.outputs.context_flag }} \
             ${{ steps.var.outputs.alias_flag }} \
             --message=$deploy_message \
-            --telemetry-disable
+            --telemetry-disable \
+            --json \
+            > netlify.json
 
           echo "data=$(cat netlify.json)" >> $GITHUB_OUTPUT
 
