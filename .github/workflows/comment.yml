@@ -1,4 +1,4 @@
-name: Comment on PR
+name: PR comments
 
 on:
   workflow_call:
@@ -10,7 +10,7 @@ on:
 
 jobs:
   comment:
-    name: "Comment on PR"
+    name: "Add comment"
     runs-on: ubuntu-latest
     permissions:
       pull-requests: write
