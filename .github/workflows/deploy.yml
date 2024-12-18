@@ -27,7 +27,7 @@ jobs:
     runs-on: ubuntu-latest
     if: "!contains(github.event.head_commit.message, 'skip ci')"
     env:
-      URL: ${{ format($NETLIFY_URL_PATTERN, needs.outputs.outputs.short_sha) }}
+      URL: ${{ format(env.NETLIFY_URL_PATTERN, needs.outputs.outputs.short_sha) }}
     needs:
       - outputs
       - test
