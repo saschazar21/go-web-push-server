@@ -21,10 +21,10 @@ jobs:
         id: netlify
         if: ${{ inputs.netlify }}
         run: |
-          deploy_url=$(jq -r '.deploy_url' <<< ${{ input.netlify }})
-          logs=$(jq -r '.logs' <<< ${{ input.netlify }})
-          function_logs=$(jq -r '.function_logs' <<< ${{ input.netlify }})
-          edge_function_logs=$(jq -r '.edge_function_logs' <<< ${{ input.netlify }})
+          deploy_url=$(jq -r '.deploy_url' <<< ${{ inputs.netlify }})
+          logs=$(jq -r '.logs' <<< ${{ inputs.netlify }})
+          function_logs=$(jq -r '.function_logs' <<< ${{ inputs.netlify }})
+          edge_function_logs=$(jq -r '.edge_function_logs' <<< ${{ inputs.netlify }})
 
           echo "content=$(cat << EOF
           ## ${{ env.site_name }} on Netlify
