@@ -11,7 +11,6 @@ on:
 
 env:
   ENABLE_DEMO: true
-  NETLIFY_URL_PATTERN: https://{0}--go-webpush.netlify.app
 
 jobs:
   outputs:
@@ -26,8 +25,6 @@ jobs:
     name: "Deploy to Netlify"
     runs-on: ubuntu-latest
     if: "!contains(github.event.head_commit.message, 'skip ci')"
-    env:
-      URL: ${{ format(env.NETLIFY_URL_PATTERN, needs.outputs.outputs.short_sha) }}
     needs:
       - outputs
       - test
@@ -94,6 +91,8 @@ jobs:
 
   comment:
     name: "Comment on PR"
+    needs:
+      - deploy-netlify
     uses: ./.github/workflows/comment.yml
     with:
-      netlify: ${{ jobs.deploy-netlify.outputs.data }}
+      netlify: ${{ needs.deploy-netlify.outputs.data }}
