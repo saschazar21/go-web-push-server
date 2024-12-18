@@ -1,0 +1,79 @@
+name: Comment on PR
+
+on:
+  workflow_call:
+    inputs:
+      netlify:
+        type: string
+      vercel:
+        type: string
+
+jobs:
+  comment:
+    name: "Comment on PR"
+    runs-on: ubuntu-latest
+    permissions:
+      pull-requests: write
+    if: ${{ github.event.pull_request.state == 'open'}}
+
+    steps:
+      - name: "Prepare Netlify comment section"
+        id: netlify
+        if: ${{ inputs.netlify }}
+        run: |
+          deploy_url=$(jq -r '.deploy_url' <<< ${{ input.netlify }})
+          logs=$(jq -r '.logs' <<< ${{ input.netlify }})
+          function_logs=$(jq -r '.function_logs' <<< ${{ input.netlify }})
+          edge_function_logs=$(jq -r '.edge_function_logs' <<< ${{ input.netlify }})
+
+          echo "content=$(cat << EOF
+          ## ${{ env.site_name }} on Netlify
+
+          | **Deployment Preview** | [**$deploy_url**]($deploy_url)             |
+          | ---------------------- | ------------------------------------------ |
+          | **Deployment Logs**    | [$logs]($logs)                             |
+          | **Function Logs**      | [$function_logs]($function_logs)           |
+          | **Edge Function Logs** | [$edge_function_logs]($edge_function_logs) |
+
+          EOF
+          )" >> $GITHUB_OUTPUT
+
+      - name: "Add comment"
+        id: comment
+        if: ${{ steps.netlify.outcome == 'success' || steps.vercel.outcome == 'success'}}
+        env:
+          NETLIFY_SEGMENT: ${{ steps.netlify.outputs.content }}
+        uses: actions/github-script@v7
+        with:
+          script: |
+            // Find previous comment
+            const { data: comments } = await github.rest.issues.listComments({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            });
+            const comment = comments.find(({ body }) => body.startsWith('Deployment preview ready!'));
+
+            // Remove comment
+            comment && await github.rest.issues.deleteComment({
+              comment_id: comment.id,
+              owner: context.repo.owner,
+              repo: context.repo.repo
+            });
+
+            // Assemble comment body
+            let body = "Deployment preview ready!";
+
+            const { NETLIFY_SEGMENT } = process.env;
+
+            if (NETLIFY_SEGMENT) {
+              body = `${body}\n\n${NETLIFY_SEGMENT}`
+            }
+
+            // Add comment
+            await github.rest.issues.createComment({
+              issue_number: context.issue.number,
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              body,
+            });

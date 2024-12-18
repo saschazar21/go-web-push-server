@@ -9,19 +9,30 @@ on:
       - opened
       - synchronize
 
+env:
+  ENABLE_DEMO: true
+  NETLIFY_URL_PATTERN: https://{0}--go-webpush.netlify.app
+
 jobs:
+  outputs:
+    name: "Set outputs"
+    uses: ./.github/workflows/outputs.yml
+
   test:
     name: "Run unit tests"
     uses: ./.github/workflows/test.yml
 
   deploy-netlify:
     name: "Deploy to Netlify"
-    permissions:
-      pull-requests: write
     runs-on: ubuntu-latest
     if: "!contains(github.event.head_commit.message, 'skip ci')"
+    env:
+      URL: ${{ format($NETLIFY_URL_PATTERN, needs.outputs.outputs.short_sha) }}
     needs:
+      - outputs
       - test
+    outputs:
+      data: ${{ steps.deploy.outputs.data }}
 
     steps:
       - name: Check out repository
@@ -48,3 +59,41 @@ jobs:
           check-latest: true
           cache-dependency-path: |
             go.sum
+
+      - name: Set variables
+        id: var
+        run: |
+          prod_flag="--prod"
+          context_flag="--context=production"
+          alias_flag=""
+
+          if [[ ${{ github.event.pull_request.state == 'open'}} ]]; then
+            prod_flag=""
+            context_flag="--context=deploy_preview"
+            alias_flag="--alias=${{ needs.outputs.outputs.short_sha }}"
+          fi
+
+          echo "prod_flag=$prod_flag" >> $GITHUB_OUTPUT
+          echo "context_flag=$context_flag" >> $GITHUB_OUTPUT
+          echo "alias_flag=$alias_flag" >> $GITHUB_OUTPUT
+
+      - name: Deploy to Netlify
+        id: deploy
+        run: |
+          netlify deploy \
+            --build \
+            ${{ steps.var.outputs.prod_flag }} \
+            ${{ steps.var.outputs.context_flag }} \
+            ${{ steps.var.outputs.alias_flag }} \
+            --message ${{ github.event.commits[0].message }} \
+            --telemetry-disable \
+            --json \
+            > netlify.json
+
+          echo "data=$(cat netlify.json)" >> $GITHUB_OUTPUT
+
+  comment:
+    name: "Comment on PR"
+    uses: ./.github/workflows/comment.yml
+    with:
+      netlify: ${{ jobs.deploy-netlify.outputs.data }}
