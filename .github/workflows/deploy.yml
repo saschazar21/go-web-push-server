@@ -91,8 +91,8 @@ jobs:
             --telemetry-disable \
             --json \
             > netlify.json
-
-          echo "data=$(cat netlify.json)" >> $GITHUB_OUTPUT
+            
+          echo "data=$(tr '\n' ' ' < netlify.json)" >> $GITHUB_OUTPUT
 
   comment:
     name: "Comment on PR"
