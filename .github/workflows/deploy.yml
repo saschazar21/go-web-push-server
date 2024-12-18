@@ -25,6 +25,9 @@ jobs:
     name: "Deploy to Netlify"
     runs-on: ubuntu-latest
     if: "!contains(github.event.head_commit.message, 'skip ci')"
+    env:
+      NETLIFY_AUTH_TOKEN: ${{ secrets.NETLIFY_AUTH_TOKEN }}
+      NETLIFY_SITE_ID: ${{ secrets.NETLIFY_SITE_ID }}
     needs:
       - outputs
       - test
@@ -77,12 +80,14 @@ jobs:
       - name: Deploy to Netlify
         id: deploy
         run: |
+          deploy_message="${{ needs.outputs.outputs.short_sha }} – $(git log -1 --pretty=format:"%s")"
+
           netlify deploy \
             --build \
             ${{ steps.var.outputs.prod_flag }} \
             ${{ steps.var.outputs.context_flag }} \
             ${{ steps.var.outputs.alias_flag }} \
-            --message ${{ github.event.commits[0].message }} \
+            --message=$deploy_message \
             --telemetry-disable \
             --json \
             > netlify.json
