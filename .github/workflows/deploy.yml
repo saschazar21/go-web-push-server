@@ -21,7 +21,7 @@ jobs:
     name: "Run unit tests"
     uses: ./.github/workflows/test.yml
 
-  deploy-netlify:
+  netlify:
     name: "Deploy to Netlify"
     runs-on: ubuntu-latest
     if: "!contains(github.event.head_commit.message, 'skip ci')"
@@ -87,19 +87,21 @@ jobs:
             ${{ steps.var.outputs.prod_flag }} \
             ${{ steps.var.outputs.context_flag }} \
             ${{ steps.var.outputs.alias_flag }} \
-            --message=$deploy_message \
+            --message="$deploy_message" \
             --telemetry-disable \
             --json \
             > netlify.json
             
           echo "data=$(tr '\n' ' ' < netlify.json)" >> $GITHUB_OUTPUT
 
+          echo $GITHUB_OUTPUT
+
   comment:
     name: "Comment on PR"
     needs:
-      - deploy-netlify
+      - netlify
     permissions:
       pull-requests: write
     uses: ./.github/workflows/comment.yml
     with:
-      netlify: ${{ needs.deploy-netlify.outputs.data }}
+      netlify: ${{ needs.netlify.outputs.data }}
