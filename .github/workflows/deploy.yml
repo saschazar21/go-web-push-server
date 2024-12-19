@@ -32,7 +32,8 @@ jobs:
       - outputs
       - test
     outputs:
-      data: ${{ steps.deploy.outputs.data }}
+      deploy_id: ${{ steps.deploy.outputs.deploy_id }}
+      deploy_url: ${{ steps.deploy.outputs.deploy_url }}
 
     steps:
       - name: Check out repository
@@ -91,10 +92,9 @@ jobs:
             --telemetry-disable \
             --json \
             > netlify.json
-            
-          echo "data=$(tr '\n' ' ' < netlify.json)" >> $GITHUB_OUTPUT
 
-          cat $GITHUB_OUTPUT
+          echo "deploy_id=$(jq -r '.deploy_id' netlify.json)" >> $GITHUB_OUTPUT
+          echo "deploy_url=$(jq -r '.deploy_url' netlify.json)" >> $GITHUB_OUTPUT
 
   comment:
     name: "Comment on PR"
@@ -104,4 +104,5 @@ jobs:
       pull-requests: write
     uses: ./.github/workflows/comment.yml
     with:
-      netlify: ${{ needs.netlify.outputs.data }}
+      netlify_deploy_id: ${{ needs.netlify.outputs.deploy_id }}
+      netlify_deploy_url: ${{ needs.netlify.outputs.deploy_url }}
