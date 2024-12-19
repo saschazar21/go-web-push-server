@@ -28,12 +28,12 @@ jobs:
           edge_function_logs="https://app.netlify.com/sites/go-webpush/logs/edge-functions?scope=deployid:${{ inputs.netlify_deploy_id }}"
 
           cat << EOF > netlify.md
-          ##📦 Netlify deployment
+          ## 📦 Netlify deployment
 
           **🔗 Preview URL:** [**${{ inputs.netlify_deploy_url }}**](${{ inputs.netlify_deploy_url }})
 
           | **👀 Deployment Preview** | <code>[${{ inputs.netlify_deploy_id }}](&logs)</code> |
-          | ------------------------- | ----------------------------------------------------- |
+          | :------------------------ | :---------------------------------------------------- |
           | **Function Logs**         | [$function_logs]($function_logs)                      |
           | **Edge Function Logs**    | [$edge_function_logs]($edge_function_logs)            |
           EOF
