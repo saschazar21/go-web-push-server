@@ -37,9 +37,7 @@ jobs:
 
     steps:
       - name: Check out repository
-        uses: actions/checkout@v2
-        with:
-          fetch-depth: 0
+        uses: actions/checkout@v4
 
       - name: Set up pnpm
         uses: pnpm/action-setup@v4
@@ -64,6 +62,8 @@ jobs:
       - name: Set variables
         id: var
         run: |
+          deploy_message="${{ needs.outputs.outputs.short_sha }} – ${{ needs.outputs.outputs.message }}"
+
           prod_flag="--prod"
           context_flag="--context=production"
           alias_flag=""
@@ -74,6 +74,7 @@ jobs:
             alias_flag="--alias=${{ needs.outputs.outputs.short_sha }}"
           fi
 
+          echo "deploy_message=$deploy_message" >> $GITHUB_OUTPUT
           echo "prod_flag=$prod_flag" >> $GITHUB_OUTPUT
           echo "context_flag=$context_flag" >> $GITHUB_OUTPUT
           echo "alias_flag=$alias_flag" >> $GITHUB_OUTPUT
@@ -81,14 +82,12 @@ jobs:
       - name: Deploy to Netlify
         id: deploy
         run: |
-          deploy_message="${{ needs.outputs.outputs.short_sha }} – ${{ github.event.head_commit.message }}"
-
           netlify deploy \
             --build \
             ${{ steps.var.outputs.prod_flag }} \
             ${{ steps.var.outputs.context_flag }} \
             ${{ steps.var.outputs.alias_flag }} \
-            --message="$deploy_message" \
+            --message="${{ steps.var.outputs.deploy_message }}" \
             --telemetry-disable \
             --json \
             > netlify.json
