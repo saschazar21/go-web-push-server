@@ -7,7 +7,7 @@ on:
         type: string
       netlify_deploy_url:
         type: string
-      vercel:
+      vercel_deploy_url:
         type: string
 
 jobs:
@@ -34,8 +34,22 @@ jobs:
 
           | **Category**              | **Link**                                                                                    |
           | :------------------------ | :------------------------------------------------------------------------------------------ |
-          | **👀 Deployment Preview** | <code>[${{ inputs.netlify_deploy_id }}](&logs)</code>                                       |
+          | **👀 Deployment Preview** | <code>[${{ inputs.netlify_deploy_id }}]($logs)</code>                                       |
           | **⚙️ Function Logs**       | <ul><li>[Functions]($function_logs)</li><li>[Edge Functions]($edge_function_logs)</li></ul> |
+          EOF
+
+      - name: "Prepare Vercel comment section"
+        id: vercel
+        if: ${{ inputs.vercel_deploy_id && inputs.vercel_deploy_url && inputs.vercel_inspector_url }}
+        run: |
+          cat << EOF > vercel.md
+          ## 📦 Vercel deployment
+
+          **🔗 Preview URL:** [**${{ inputs.vercel_deploy_url }}**](${{ inputs.vercel_deploy_url }})
+
+          | **Category**              | **Link**                                                                                    |
+          | :------------------------ | :------------------------------------------------------------------------------------------ |
+          | **👀 Deployment Preview** | <code>[${{ inputs.vercel_deploy_id }}](${{ inputs.vercel_inspector_url }})</code>           |
           EOF
 
       - name: "Add comment"

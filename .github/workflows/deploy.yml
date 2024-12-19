@@ -59,7 +59,7 @@ jobs:
           cache-dependency-path: |
             go.sum
 
-      - name: Set variables
+      - name: Set deploy variables
         id: var
         run: |
           deploy_message="${{ needs.outputs.outputs.short_sha }} – ${{ needs.outputs.outputs.message }}"
@@ -95,13 +95,118 @@ jobs:
           echo "deploy_id=$(jq -r '.deploy_id' netlify.json)" >> $GITHUB_OUTPUT
           echo "deploy_url=$(jq -r '.deploy_url' netlify.json)" >> $GITHUB_OUTPUT
 
+  vercel:
+    name: "Deploy to Vercel"
+    runs-on: ubuntu-latest
+    if: "!contains(github.event.head_commit.message, 'skip ci')"
+    needs:
+      - outputs
+      - test
+    outputs:
+      deploy_id: ${{ steps.deploy-data.outputs.deploy_id }}
+      deploy_url: ${{ steps.deploy.outputs.deploy_url }}
+      inspector_url: ${{ steps.deploy-data.outputs.inspector_url }}
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up pnpm
+        uses: pnpm/action-setup@v4
+
+      - name: Set up Node.js
+        uses: actions/setup-node@v4
+        with:
+          node-version-file: ".tool-versions"
+          cache: "pnpm"
+
+      - name: Install dependencies
+        run: pnpm install
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          check-latest: true
+          cache-dependency-path: |
+            go.sum
+
+      - name: Fetch project information
+        id: info
+        run: |
+          curl \
+            -H "Authorization: Bearer ${{ secrets.VERCEL_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            "https://api.vercel.com/v9/projects/${{ secrets.VERCEL_PROJECT_ID }}" \
+            -o vercel.json
+
+          echo "vercel_url=$(jq -r '.targets.production.alias[0]' vercel.json)" >> $GITHUB_OUTPUT
+
+          rm -rf vercel.json
+
+      - name: Build project
+        id: build
+        env:
+          VERCEL_PROJECT_PRODUCTION_URL: ${{ steps.info.outputs.vercel_url }}
+        run: |
+          rm -rf ./cmd
+          make build
+
+      - name: Set deploy variables
+        id: var
+        run: |
+          prod_flag="--prod"
+          target_flag="--target=production"
+
+          if [[ ${{ github.event.pull_request.state == 'open'}} ]]; then
+            prod_flag=""
+            target_flag="--target=preview"
+          fi
+
+          echo "prod_flag=$prod_flag" >> $GITHUB_OUTPUT
+          echo "target_flag=$target_flag" >> $GITHUB_OUTPUT
+
+      - name: Deploy to Vercel
+        id: deploy
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
+        run: |
+          vercel \
+            ${{ steps.var.outputs.prod_flag }} \
+            ${{ steps.var.outputs.target_flag }} \
+            --token=${{ secrets.VERCEL_TOKEN }} \
+            > vercel.txt
+
+          echo "deploy_url=$(cat vercel.txt)" >> $GITHUB_OUTPUT
+
+      - name: Fetch deployment data
+        id: deploy-data
+        run: |
+          origin=$(echo "${{ steps.deploy.outputs.deploy_url }}" | awk -F/ '{print $3}')
+
+          curl \
+            -X GET \
+            -H "Authorization: Bearer ${{ secrets.VERCEL_TOKEN }}" \
+            -H "Content-Type: application/json" \
+            "https://api.vercel.com/v13/deployments/$origin" \
+            -o vercel.json
+
+          echo "deploy_id=$(jq -r '.id' vercel.json)" >> $GITHUB_OUTPUT
+          echo "inspector_url=$(jq -r '.inspectorUrl' vercel.json)" >> $GITHUB_OUTPUT
+
   comment:
     name: "Comment on PR"
     needs:
       - netlify
+      - vercel
     permissions:
       pull-requests: write
     uses: ./.github/workflows/comment.yml
     with:
       netlify_deploy_id: ${{ needs.netlify.outputs.deploy_id }}
       netlify_deploy_url: ${{ needs.netlify.outputs.deploy_url }}
+      vercel_deploy_id: ${{ needs.vercel.outputs.deploy_id }}
+      vercel_deploy_url: ${{ needs.vercel.outputs.deploy_url }}
+      vercel_inspector_url: ${{ needs.vercel.outputs.inspector_url }}
