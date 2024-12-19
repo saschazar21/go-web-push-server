@@ -81,7 +81,7 @@ jobs:
       - name: Deploy to Netlify
         id: deploy
         run: |
-          deploy_message="${{ needs.outputs.outputs.short_sha }} – ${{ github.event.commits[0].message }}"
+          deploy_message="${{ needs.outputs.outputs.short_sha }} – ${{ github.event.commits[0].message || github.event.head_commit.message }}"
 
           netlify deploy \
             --build \
