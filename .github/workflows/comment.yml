@@ -27,26 +27,25 @@ jobs:
           function_logs="https://app.netlify.com/sites/go-webpush/logs/functions?scope=deploy:${{ inputs.netlify_deploy_id }}"
           edge_function_logs="https://app.netlify.com/sites/go-webpush/logs/edge-functions?scope=deployid:${{ inputs.netlify_deploy_id }}"
 
-          echo "content=$(cat << EOF
-          ## Netlify deployment `${{ inputs.netlify_deploy_id }}`
+          cat << EOF > netlify.md
+          ##📦 Netlify deployment
 
-          | **Deployment Preview** | [**${{ inputs.netlify_deploy_url }}**](${{ inputs.netlify_deploy_url }})             |
-          | ---------------------- | ------------------------------------------ |
-          | **Deployment Logs**    | [$logs]($logs)                             |
-          | **Function Logs**      | [$function_logs]($function_logs)           |
-          | **Edge Function Logs** | [$edge_function_logs]($edge_function_logs) |
+          **🔗 Preview URL:** [**${{ inputs.netlify_deploy_url }}**](${{ inputs.netlify_deploy_url }})
 
+          | **👀 Deployment Preview** | <code>[${{ inputs.netlify_deploy_id }}](&logs)</code> |
+          | ------------------------- | ----------------------------------------------------- |
+          | **Function Logs**         | [$function_logs]($function_logs)                      |
+          | **Edge Function Logs**    | [$edge_function_logs]($edge_function_logs)            |
           EOF
-          )" >> $GITHUB_OUTPUT
 
       - name: "Add comment"
         id: comment
         if: ${{ steps.netlify.outcome == 'success' || steps.vercel.outcome == 'success'}}
-        env:
-          NETLIFY_SEGMENT: ${{ steps.netlify.outputs.content }}
         uses: actions/github-script@v7
         with:
           script: |
+            import { promises as fs } from 'fs';
+
             // Find previous comment
             const { data: comments } = await github.rest.issues.listComments({
               issue_number: context.issue.number,
@@ -65,10 +64,10 @@ jobs:
             // Assemble comment body
             let body = "Deployment preview ready!";
 
-            const { NETLIFY_SEGMENT } = process.env;
+            const netlify = await fs.readFile('./netlify.md', 'utf-8').catch((_e) => '');
 
-            if (NETLIFY_SEGMENT) {
-              body = `${body}\n\n${NETLIFY_SEGMENT}`
+            if (netlify) {
+              body = `${body}\n\n${netlify}`
             }
 
             // Add comment
