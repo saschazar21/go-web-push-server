@@ -85,7 +85,13 @@ jobs:
             const netlify = await fs.readFile('./netlify.md', 'utf-8').catch((_e) => '');
 
             if (netlify) {
-              body = `${body}\n\n${netlify}`
+              body = `${body}\n\n${netlify}`;
+            }
+
+            const vercel = await fs.readFile('./vercel.md', 'utf-8').catch((_e) => '');
+
+            if (vercel) {
+              body = `${body}\n\n${vercel}`;
             }
 
             // Add comment

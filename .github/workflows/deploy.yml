@@ -135,6 +135,7 @@ jobs:
         id: info
         run: |
           curl \
+            -fsSL \
             -H "Authorization: Bearer ${{ secrets.VERCEL_TOKEN }}" \
             -H "Content-Type: application/json" \
             "https://api.vercel.com/v9/projects/${{ secrets.VERCEL_PROJECT_ID }}" \
@@ -187,6 +188,7 @@ jobs:
           origin=$(echo "${{ steps.deploy.outputs.deploy_url }}" | awk -F/ '{print $3}')
 
           curl \
+            -fsSL \
             -X GET \
             -H "Authorization: Bearer ${{ secrets.VERCEL_TOKEN }}" \
             -H "Content-Type: application/json" \
