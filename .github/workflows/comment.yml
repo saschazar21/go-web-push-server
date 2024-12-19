@@ -7,7 +7,11 @@ on:
         type: string
       netlify_deploy_url:
         type: string
+      vercel_deploy_id:
+        type: string
       vercel_deploy_url:
+        type: string
+      vercel_inspector_url:
         type: string
 
 jobs:
