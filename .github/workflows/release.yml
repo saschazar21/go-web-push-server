@@ -1,0 +1,144 @@
+name: Release
+
+on:
+  push:
+    branches:
+      - main
+
+jobs:
+  changelog:
+    name: Changelog
+    if: "!contains(github.event.head_commit.message, 'skip ci')"
+    uses: ./.github/workflows/changelog.yml
+    with:
+      args: -v --bump
+      commit: true
+
+  tag:
+    name: Tag
+    runs-on: ubuntu-latest
+    needs:
+      - changelog
+
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+
+      - name: Create tag
+        id: tag
+        uses: actions/github-script@v7
+        with:
+          script: |
+            github.rest.git.createRef({
+              owner: context.repo.owner,
+              repo: context.repo.repo,
+              ref: 'refs/tags/${{ needs.changelog.outputs.version }}',
+              sha: context.sha,
+            });
+
+  changes:
+    name: Latest Changes
+    needs:
+      - tag
+
+    uses: ./.github/workflows/changelog.yml
+    with:
+      args: -v --latest --strip header
+      commit: false
+
+  compile:
+    if: "!contains(github.event.head_commit.message, 'skip ci')"
+    name: Compile VAPID Key Generator Binary
+    runs-on: ubuntu-latest
+    strategy:
+      fail-fast: true
+      matrix:
+        os:
+          - darwin
+          - linux
+          - windows
+        arch:
+          - amd64
+          - arm64
+        include:
+          - os: linux
+            arch: arm
+            ver: 6
+          - os: linux
+            arch: arm
+            ver: 7
+
+    steps:
+      - name: Check out repository
+        uses: actions/checkout@v4
+
+      - name: Set up Go
+        uses: actions/setup-go@v5
+        with:
+          go-version-file: go.mod
+          check-latest: true
+          cache-dependency-path: |
+            go.sum
+
+      - name: Compile
+        id: compile
+        env:
+          GOARCH: ${{ matrix.arch }}
+          GOOS: ${{ matrix.os }}
+        run: |
+          filename="vapid-keygen_$GOOS"
+
+          case $GOARCH in
+
+            amd64)
+              filename="$filename-x64"
+              ;;
+
+            arm64)
+              filename="$filename-$GOARCH"
+              ;;
+
+            *)
+              filename="$filename-armv${{ matrix.ver }}"
+              ;;
+
+          esac
+
+          if [ $GOOS == windows ]; then
+            filename="$filename.exe"
+          fi
+
+          if [ $GOOS == linux && $GOARCH == arm ]; then
+            GOARM=${{ matrix.ver }} go build -o $filename cli/main.go
+          else
+            go build -o $filename cli/main.go
+          fi
+
+          echo "filename=$filename" >> $GITHUB_OUTPUT
+
+      - name: Upload Artifact
+        uses: actions/upload-artifact@v4
+        with:
+          name: ${{ steps.compile.outputs.filename }}
+          overwrite: true
+          path: ${{ steps.compile.outputs.filename }}
+          retention-days: 1
+
+  release:
+    name: Release
+    runs-on: ubuntu-latest
+    needs:
+      - changes
+      - compile
+
+    steps:
+      - name: Download Artifacts
+        uses: actions/download-artifact@v4
+
+      - name: Release
+        uses: softprops/action-gh-release@v2
+        with:
+          body: ${{ needs.changes.outputs.content }}
+          tag_name: ${{ needs.changes.outputs.version }}
+          files: |
+            vapid-keygen_*

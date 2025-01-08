@@ -1,4 +1,6 @@
-set -euxo pipefail
+#!/bin/bash
+
+set -eux
 
 GOOS=linux
 GOARCH=amd64
