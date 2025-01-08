@@ -5,8 +5,6 @@ on:
     inputs:
       args:
         type: string
-      commit:
-        type: boolean
 
     outputs:
       content:
@@ -15,9 +13,6 @@ on:
       version:
         description: "The next version bump"
         value: ${{ jobs.changelog.outputs.version }}
-
-permissions:
-  contents: write
 
 jobs:
   changelog:
@@ -50,14 +45,3 @@ jobs:
         with:
           config: ./cliff.toml
           args: ${{ inputs.args }}
-
-      - name: Commit CHANGELOG.md
-        id: commit
-        if: ${{ inputs.commit }}
-        run: |
-          git config user.name 'github-actions[bot]'
-          git config user.email 'github-actions[bot]@users.noreply.github.com'
-          set +e
-          git add CHANGELOG.md
-          git commit -m "Update CHANGELOG.md [skip ci]"
-          git push https://${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git main
