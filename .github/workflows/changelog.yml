@@ -16,6 +16,9 @@ on:
         description: "The next version bump"
         value: ${{ jobs.changelog.outputs.version }}
 
+permissions:
+  contents: write
+
 jobs:
   changelog:
     name: Generate changelog
