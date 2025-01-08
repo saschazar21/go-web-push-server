@@ -32,7 +32,7 @@ jobs:
 
       - name: Fetch default config
         run: |
-          if [[ ! -f ./cliff.toml ]]; then
+          if [ ! -f ./cliff.toml ]; then
             curl \
               -fsSL \
               "https://raw.githubusercontent.com/orhun/git-cliff/refs/heads/main/config/cliff.toml" \

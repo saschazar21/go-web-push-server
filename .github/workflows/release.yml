@@ -11,7 +11,7 @@ jobs:
     if: "!contains(github.event.head_commit.message, 'skip ci')"
     uses: ./.github/workflows/changelog.yml
     with:
-      args: -vv
+      args: -v --bump
       commit: true
 
   tag:
@@ -43,7 +43,7 @@ jobs:
 
     uses: ./.github/workflows/changelog.yml
     with:
-      args: -vv --latest --strip header
+      args: -v --latest --strip header
       commit: false
 
   compile:
@@ -104,11 +104,11 @@ jobs:
 
           esac
 
-          if [[ $GOOS == windows ]]; then
+          if [ $GOOS == windows ]; then
             filename="$filename.exe"
           fi
 
-          if [[ $GOOS == linux && $GOARCH == arm ]]; then
+          if [ $GOOS == linux && $GOARCH == arm ]; then
             GOARM=${{ matrix.ver }} go build -o $filename cli/main.go
           else
             go build -o $filename cli/main.go
