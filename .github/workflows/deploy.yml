@@ -68,7 +68,7 @@ jobs:
           context_flag="--context=production"
           alias_flag=""
 
-          if [ ${{ github.event.pull_request.state == 'open'}} ]; then
+          if ${{ github.event.pull_request.state == 'open' }}; then
             prod_flag=""
             context_flag="--context=deploy_preview"
             alias_flag="--alias=${{ needs.outputs.outputs.short_sha }}"
@@ -159,7 +159,7 @@ jobs:
           prod_flag="--prod"
           target_flag="--target=production"
 
-          if [ ${{ github.event.pull_request.state == 'open'}} ]; then
+          if ${{ github.event.pull_request.state == 'open' }}; then
             prod_flag=""
             target_flag="--target=preview"
           fi
