@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.2] - 2025-01-09
+
+### ⚙️ Miscellaneous Tasks
+
+- Added Go package release step, fixed git tag in release workflow (#4)
+
 ## [0.1.1] - 2025-01-08
 
 ### ⚙️ Miscellaneous Tasks
