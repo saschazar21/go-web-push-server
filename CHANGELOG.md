@@ -2,6 +2,13 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.1] - 2025-01-08
+
+### ⚙️ Miscellaneous Tasks
+
+- Fixed adding CHANGELOG.md to tag, added artifacts to release (#3)
+- Fixed missing input in workflow
+
 ## [0.1.0] - 2025-01-08
 
 ### 🚀 Features
