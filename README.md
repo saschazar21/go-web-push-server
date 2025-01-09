@@ -233,4 +233,4 @@ func main() {
 
 Licensed under the MIT license.
 
-Copyright ©️ 2024 [Sascha Zarhuber](https://sascha.work)
+Copyright ©️ 2024–2025 [Sascha Zarhuber](https://sascha.work)
