@@ -20,5 +20,8 @@ jobs:
           cache-dependency-path: |
             go.sum
 
+      - name: Tidy up
+        run: go mod tidy
+
       - name: Test
         run: make test
