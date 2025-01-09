@@ -26,8 +26,8 @@ jobs:
       - name: Checkout
         uses: actions/checkout@v4
 
-      - name: Commit CHANGELOG.md
-        id: commit
+      - name: Create Tag
+        id: tag
         run: |
           echo "${{ needs.changelog.outputs.content }}" > CHANGELOG.md
 
@@ -36,19 +36,10 @@ jobs:
           set +e
           git add CHANGELOG.md
           git commit -m "Update CHANGELOG.md [skip ci]"
-          git push https://${{ secrets.GITHUB_TOKEN }}@github.com/${GITHUB_REPOSITORY}.git main
+          git push
 
-      - name: Create Tag
-        id: tag
-        uses: actions/github-script@v7
-        with:
-          script: |
-            github.rest.git.createRef({
-              owner: context.repo.owner,
-              repo: context.repo.repo,
-              ref: 'refs/tags/${{ needs.changelog.outputs.version }}',
-              sha: context.sha,
-            });
+          git tag ${{ needs.changelog.outputs.version }}
+          git push origin tag ${{ needs.changelog.outputs.version }}
 
   changes:
     name: Latest Changes
