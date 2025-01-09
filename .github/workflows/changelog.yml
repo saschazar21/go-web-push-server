@@ -20,7 +20,7 @@ jobs:
     runs-on: ubuntu-latest
     outputs:
       content: ${{ steps.changelog.outputs.content }}
-      version: v${{ steps.changelog.outputs.version }}
+      version: ${{ steps.changelog.outputs.version }}
 
     steps:
       - name: Checkout repository

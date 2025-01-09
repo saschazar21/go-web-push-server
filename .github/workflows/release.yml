@@ -14,7 +14,7 @@ jobs:
     if: "!contains(github.event.head_commit.message, 'skip ci')"
     uses: ./.github/workflows/changelog.yml
     with:
-      args: -v --bump
+      args: -v --bump --tag-pattern="v[0-9].*"
 
   tag:
     name: Tag
