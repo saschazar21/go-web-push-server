@@ -5,7 +5,7 @@
   <strong>A web push server written in Go. 🤖📝</strong>
   <br />
   <br />
-  <a href="https://app.netlify.com/sites/go-webpush/deploys"><img src="https://api.netlify.com/api/v1/badges/a4396b78-5cc5-402d-b92c-4c878994852a/deploy-status" alt="Netlify Status"></a> <a href="https://webpush-six.vercel.app"><img src="https://deploy-badge.vercel.app/vercel/webpush-six" alt="Vercel Deploy"></img></a> <img alt="License" src="https://img.shields.io/github/license/saschazar21/go-web-push-server">
+  <a href="https://go-webpush.netlify.app"><img src="https://img.shields.io/badge/netlify-deployed-green" alt="Netlify Status"></a> <a href="https://webpush-six.vercel.app"><img src="https://deploy-badge.vercel.app/vercel/webpush-six" alt="Vercel Deploy"></img></a> <img alt="License" src="https://img.shields.io/github/license/saschazar21/go-web-push-server">
   <br />
   <br />
   <a href="https://app.netlify.com/start/deploy?repository=https://github.com/saschazar21/go-web-push-server"><img src="https://www.netlify.com/img/deploy/button.svg" alt="Deploy to Netlify"></a>
@@ -21,7 +21,8 @@
 
 It may be used as a standalone server, or as a part of a larger application, e.g. a web application or a backend service.
 
-Don't want the full environment? The contained [`webpush`](#source-code) Go package provides as little or as much functionality as currently needed.
+> ℹ️ **Don't want the full environment?**  
+> The contained [`webpush`](#source-code) Go package provides as little or as much functionality as currently needed.
 
 ## Prerequisites
 
@@ -34,6 +35,8 @@ Don't want the full environment? The contained [`webpush`](#source-code) Go pack
 Both the server and the contained `webpush` package require the following environment variables to be set:
 
 > ℹ️ **Note**: A new VAPID key pair may be created by executing `go run cli/main.go`.
+
+> ℹ️ **Note**: When only using parts of the `webpush` package, certain environment variables may not be required. Check the [source code](webpush) for more information.
 
 - `POSTGRES_CONNECTION_STRING`: The connection string to the PostgreSQL database.
 - `VAPID_PRIVATE_KEY`: The private VAPID key in PEM format.
@@ -230,4 +233,4 @@ func main() {
 
 Licensed under the MIT license.
 
-Copyright ©️ 2024 [Sascha Zarhuber](https://sascha.work)
+Copyright ©️ 2024–2025 [Sascha Zarhuber](https://sascha.work)
