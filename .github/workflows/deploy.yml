@@ -177,7 +177,7 @@ jobs:
             --environment=$environment \
             --token=${{ secrets.VERCEL_TOKEN }}
 
-          vapid_public_key=$(cat .vercel/.env.$environment.local | awk -F 'VAPID_PUBLIC_KEY="' '{print $2}' | tr -d '[:space:]')
+          vapid_public_key=$(awk -F'=' '/^VAPID_PUBLIC_KEY/ {gsub(/"/, "", $2); print $2}' .vercel/.env.$environment.local | tr -d '[:space:]')
 
           echo "vapid_public_key=$vapid_public_key" >> $GITHUB_OUTPUT
 
