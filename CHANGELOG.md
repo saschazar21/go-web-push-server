@@ -2,6 +2,12 @@
 
 All notable changes to this project will be documented in this file.
 
+## [0.1.4] - 2025-01-10
+
+### 🐛 Bug Fixes
+
+- Fixed injecting VAPID_PUBLIC_KEY env (#6)
+
 ## [0.1.3] - 2025-01-09
 
 ### ⚙️ Miscellaneous Tasks
