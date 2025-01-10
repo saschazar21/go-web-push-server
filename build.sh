@@ -26,7 +26,7 @@ if [[ -d "$(pwd)/cmd" ]]; then
       n=${n##*/}
 
       # build binary
-      go build -o $(pwd)/functions/${v}_${n} $(pwd)/cmd/$v/$n;
+      CGO_ENABLED=0 go build -o $(pwd)/functions/${v}_${n} $(pwd)/cmd/$v/$n;
     done
   done
   

@@ -1,6 +1,6 @@
 {
   "$schema": "https://openapi.vercel.sh/vercel.json",
-  "buildCommand": "make",
+  "buildCommand": "make build_website",
   "headers": [
     {
       "source": "/manifest.webmanifest",

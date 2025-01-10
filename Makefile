@@ -1,10 +1,10 @@
 .PHONY: test clean
 
 build: build_website
-	mkdir -p public
 	sh -c ./build.sh
 
 build_website:
+	mkdir -p public
 ifdef ENABLE_DEMO
 	npx eleventy
 	npx workbox injectManifest workbox-config.cjs
