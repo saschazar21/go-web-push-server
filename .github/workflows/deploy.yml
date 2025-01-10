@@ -218,7 +218,6 @@ jobs:
             ${{ steps.var.outputs.prod_flag }} \
             ${{ steps.var.outputs.target_flag }} \
             --token=${{ secrets.VERCEL_TOKEN }} \
-            --prebuilt \
             > vercel.txt
 
           echo "deploy_url=$(cat vercel.txt)" >> $GITHUB_OUTPUT
