@@ -114,10 +114,6 @@ jobs:
     name: "Deploy to Vercel"
     runs-on: ubuntu-latest
     if: "!contains(github.event.head_commit.message, 'skip ci')"
-    env:
-      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
     needs:
       - outputs
       - test
@@ -166,6 +162,10 @@ jobs:
 
       - name: Fetch environment variables
         id: environment
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
           environment="production"
 
@@ -190,6 +190,10 @@ jobs:
 
       - name: Set deploy variables
         id: var
+        env:
+          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
           prod_flag="--prod"
           target_flag=""
