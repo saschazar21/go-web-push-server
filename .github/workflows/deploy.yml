@@ -70,7 +70,7 @@ jobs:
 
           if ${{ github.event.pull_request.state == 'open' }}; then
             prod_flag=""
-            context_flag="--context=deploy_preview"
+            context_flag="--context=deploy-preview"
             alias_flag="--alias=${{ needs.outputs.outputs.short_sha }}"
           fi
 
@@ -79,8 +79,23 @@ jobs:
           echo "context_flag=$context_flag" >> $GITHUB_OUTPUT
           echo "alias_flag=$alias_flag" >> $GITHUB_OUTPUT
 
+      - name: Fetch environment variables
+        id: environment
+        run: |
+          context="production"
+
+          if ${{ github.event.pull_request.state == 'open' }}; then
+            context="deploy-preview"
+          fi
+
+          vapid_public_key=$(pnpm netlify env:get VAPID_PUBLIC_KEY --context=$context)
+
+          echo "vapid_public_key=$vapid_public_key" >> $GITHUB_OUTPUT
+
       - name: Deploy to Netlify
         id: deploy
+        env:
+          VAPID_PUBLIC_KEY: ${{ steps.environment.outputs.vapid_public_key }}
         run: |
           pnpm netlify deploy \
             --build \
@@ -99,6 +114,10 @@ jobs:
     name: "Deploy to Vercel"
     runs-on: ubuntu-latest
     if: "!contains(github.event.head_commit.message, 'skip ci')"
+    env:
+      VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
+      VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
+      VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
     needs:
       - outputs
       - test
@@ -145,9 +164,25 @@ jobs:
 
           rm -rf vercel.json
 
+      - name: Fetch environment variables
+        id: environment
+        run: |
+          environment="production"
+
+          if ${{ github.event.pull_request.state == 'open' }}; then
+            environment="preview"
+          fi
+
+          pnpm vercel pull --environment=$environment
+
+          vapid_public_key=$(cat .vercel/.env.$environment.local | awk -F 'VAPID_PUBLIC_KEY="' '{print $2}' | tr -d '[:space:]')
+
+          echo "vapid_public_key=$vapid_public_key" >> $GITHUB_OUTPUT
+
       - name: Build project
         id: build
         env:
+          VAPID_PUBLIC_KEY: ${{ steps.environment.outputs.vapid_public_key }}
           VERCEL_PROJECT_PRODUCTION_URL: ${{ steps.info.outputs.vercel_url }}
         run: |
           rm -rf ./cmd
@@ -157,7 +192,7 @@ jobs:
         id: var
         run: |
           prod_flag="--prod"
-          target_flag="--target=production"
+          target_flag=""
 
           if ${{ github.event.pull_request.state == 'open' }}; then
             prod_flag=""
@@ -169,10 +204,6 @@ jobs:
 
       - name: Deploy to Vercel
         id: deploy
-        env:
-          VERCEL_TOKEN: ${{ secrets.VERCEL_TOKEN }}
-          VERCEL_ORG_ID: ${{ secrets.VERCEL_ORG_ID }}
-          VERCEL_PROJECT_ID: ${{ secrets.VERCEL_PROJECT_ID }}
         run: |
           pnpm vercel \
             ${{ steps.var.outputs.prod_flag }} \
