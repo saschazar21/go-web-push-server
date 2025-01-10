@@ -85,6 +85,6 @@ require (
 	mellium.im/sasl v0.3.2 // indirect
 )
 
-require github.com/saschazar21/go-web-push-server v0.1.3
+require github.com/saschazar21/go-web-push-server v0.1.4
 
 replace github.com/saschazar21/go-web-push-server => ./
