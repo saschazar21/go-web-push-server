@@ -204,6 +204,14 @@ jobs:
           echo "prod_flag=$prod_flag" >> $GITHUB_OUTPUT
           echo "target_flag=$target_flag" >> $GITHUB_OUTPUT
 
+      - name: Build Vercel project
+        id: build
+        run: |
+          pnpm vercel build \
+            ${{ steps.var.outputs.prod_flag }} \
+            ${{ steps.var.outputs.target_flag }} \
+            --token=${{ secrets.VERCEL_TOKEN }}
+
       - name: Deploy to Vercel
         id: deploy
         run: |
@@ -211,6 +219,7 @@ jobs:
             ${{ steps.var.outputs.prod_flag }} \
             ${{ steps.var.outputs.target_flag }} \
             --token=${{ secrets.VERCEL_TOKEN }} \
+            --prebuilt \
             > vercel.txt
 
           echo "deploy_url=$(cat vercel.txt)" >> $GITHUB_OUTPUT
