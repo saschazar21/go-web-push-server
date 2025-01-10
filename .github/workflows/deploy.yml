@@ -173,7 +173,9 @@ jobs:
             environment="preview"
           fi
 
-          pnpm vercel pull --environment=$environment
+          pnpm vercel pull \
+            --environment=$environment \
+            --token=${{ secrets.VERCEL_TOKEN }}
 
           vapid_public_key=$(cat .vercel/.env.$environment.local | awk -F 'VAPID_PUBLIC_KEY="' '{print $2}' | tr -d '[:space:]')
 
