@@ -22,8 +22,8 @@
   "dependencies": {
     "@11ty/eleventy": "^3.0.0",
     "dotenv": "^16.4.7",
-    "netlify-cli": "^17.37.2",
-    "vercel": "^39.1.2",
+    "netlify-cli": "^18.0.0",
+    "vercel": "^39.2.6",
     "workbox-cli": "^7.3.0"
   }
 }
