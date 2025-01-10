@@ -205,7 +205,6 @@ jobs:
           echo "target_flag=$target_flag" >> $GITHUB_OUTPUT
 
       - name: Build Vercel project
-        id: build
         run: |
           pnpm vercel build \
             ${{ steps.var.outputs.prod_flag }} \
