@@ -5,11 +5,11 @@
   <strong>A web push server written in Go. 🤖📝</strong>
   <br />
   <br />
-  <a href="https://go-webpush.netlify.app"><img src="https://img.shields.io/badge/netlify-deployed-green" alt="Netlify Status"></a> <a href="https://webpush-six.vercel.app"><img src="https://deploy-badge.vercel.app/vercel/webpush-six" alt="Vercel Deploy"></img></a> <img alt="License" src="https://img.shields.io/github/license/saschazar21/go-web-push-server">
+  <a href="https://go-webpush.netlify.app"><img src="https://img.shields.io/badge/netlify-deployed-green" alt="Netlify Status"></a> <a href="https://webpush-six.vercel.app">🚨<img src="https://deploy-badge.vercel.app/vercel/webpush-six" alt="Vercel Deploy"></img></a> <img alt="License" src="https://img.shields.io/github/license/saschazar21/go-web-push-server">
   <br />
   <br />
   <a href="https://app.netlify.com/start/deploy?repository=https://github.com/saschazar21/go-web-push-server"><img src="https://www.netlify.com/img/deploy/button.svg" alt="Deploy to Netlify"></a>
- <a href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fsaschazar21%2Fgo-web-push-server&env=POSTGRES_CONNECTION_STRING,VAPID_EXPIRY_DURATION,VAPID_PRIVATE_KEY,VAPID_SUBJECT,BASIC_AUTH_PASSWORD&envDescription=API%20keys%20needed%20for%20successful%20deployment&envLink=https%3A%2F%2Fgithub.com%2Fsaschazar21%2Fgo-web-push-server%2Fblob%2Fmain%2F.env.sample"><img src="https://vercel.com/button" alt="Deploy with Vercel"/></a>
+ <a href="https://vercel.com/new/clone?repository-url=https%3A%2F%2Fgithub.com%2Fsaschazar21%2Fgo-web-push-server&env=POSTGRES_CONNECTION_STRING,VAPID_EXPIRY_DURATION,VAPID_PRIVATE_KEY,VAPID_SUBJECT,BASIC_AUTH_PASSWORD&envDescription=API%20keys%20needed%20for%20successful%20deployment&envLink=https%3A%2F%2Fgithub.com%2Fsaschazar21%2Fgo-web-push-server%2Fblob%2Fmain%2F.env.sample">🚨<img src="https://vercel.com/button" alt="Deploy with Vercel"/></a>
   <br />
   <br />
   <br />
@@ -20,6 +20,9 @@
 `go-web-push-server` is a web push server written in Go. It provides a RESTful API to manage web push subscriptions and send push notifications to them.
 
 It may be used as a standalone server, or as a part of a larger application, e.g. a web application or a backend service.
+
+> 🚨 **Rewrites do not seem to work on Vercel yet!**  
+> Somehow, the rewrites section in the `vercel.json` is ignored by Vercel using the current Github Workflows setup, so the demo mode does not work there yet. Please refer to the [Netlify deployment](https://go-webpush.netlify.app) for a working demo.
 
 > ℹ️ **Don't want the full environment?**  
 > The contained [`webpush`](#source-code) Go package provides as little or as much functionality as currently needed.
