@@ -1,4 +1,4 @@
-package webpush
+package utils
 
 import (
 	"fmt"
@@ -71,9 +71,9 @@ func validateEpochGreaterNow(fl validator.FieldLevel) bool {
 	case int64:
 		epoch = t
 	case Epoch:
-		epoch = t.Unix()
+		epoch = time.Time(t).Unix()
 	case EpochMillis:
-		epoch = t.Unix()
+		epoch = time.Time(t).Unix()
 	case time.Time:
 		epoch = t.Unix()
 	default:

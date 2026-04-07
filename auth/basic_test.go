@@ -5,7 +5,7 @@ import (
 	"net/http/httptest"
 	"testing"
 
-	"github.com/saschazar21/go-web-push-server/webpush"
+	"github.com/saschazar21/go-web-push-server/errors"
 	"gotest.tools/v3/assert"
 )
 
@@ -68,7 +68,7 @@ func TestHandleBasicAuth(t *testing.T) {
 				assert.NilError(t, err)
 				assert.Equal(t, tt.username, clientId)
 			} else {
-				responseErr, _ := err.(webpush.ResponseError)
+				responseErr, _ := err.(errors.ResponseError)
 
 				assert.Equal(t, tt.wantStatus, responseErr.StatusCode)
 			}

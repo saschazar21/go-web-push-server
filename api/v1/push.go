@@ -10,20 +10,25 @@ import (
 	"github.com/gorilla/schema"
 	api_utils "github.com/saschazar21/go-web-push-server/api/_utils"
 	"github.com/saschazar21/go-web-push-server/auth"
+	"github.com/saschazar21/go-web-push-server/db"
+	"github.com/saschazar21/go-web-push-server/errors"
+	"github.com/saschazar21/go-web-push-server/models"
+	"github.com/saschazar21/go-web-push-server/request"
+	"github.com/saschazar21/go-web-push-server/utils"
 	"github.com/saschazar21/go-web-push-server/webpush"
 	"github.com/uptrace/bun"
 )
 
 var decoder = schema.NewDecoder()
 
-func decodePushParams(r *http.Request) (params *webpush.WebPushDetails, err error) {
-	params = new(webpush.WebPushDetails)
+func decodePushParams(r *http.Request) (params *request.WebPushDetails, err error) {
+	params = &request.WebPushDetails{}
 
 	decoder.IgnoreUnknownKeys(true)
 	if err = decoder.Decode(params, r.URL.Query()); err != nil {
 		log.Println(err)
 
-		err = webpush.NewResponseError(webpush.BAD_REQUEST_ERROR, http.StatusBadRequest)
+		err = errors.NewResponseError(errors.BAD_REQUEST_ERROR, http.StatusBadRequest)
 		return
 	}
 
@@ -48,26 +53,26 @@ func decodePushRecipient(r *http.Request) (recipientId string, err error) {
 	return
 }
 
-func deleteObsoleteSubscriptions(ctx context.Context, db *bun.DB, errorObjects []webpush.ErrorObject) (err error) {
+func deleteObsoleteSubscriptions(ctx context.Context, db *bun.DB, errorObjects []errors.ErrorObject) (err error) {
 	for _, errObj := range errorObjects {
 		if errObj.Meta == nil || (errObj.Status != http.StatusGone && errObj.Status != http.StatusNotFound) {
 			continue
 		}
 
-		webpush.DeleteSubscriptionByEndpoint(ctx, db, errObj.Meta.Endpoint)
+		models.DeleteSubscriptionByEndpoint(ctx, db, errObj.Meta.Endpoint)
 	}
 
 	return
 }
 
-func sendPushNotifications(subscriptions []webpush.PushSubscription, payload []byte, params *webpush.WithWebPushParams) (errorObjects []webpush.ErrorObject, err error) {
+func sendPushNotifications(subscriptions []*models.PushSubscription, payload []byte, params *request.WithWebPushParams) (errorObjects []errors.ErrorObject, err error) {
 	var notifications []*webpush.WebPush
 	var statusCode int
 
 	for _, sub := range subscriptions {
 		push := new(webpush.WebPush)
 
-		if push, err = webpush.NewWebPush(&sub); err != nil {
+		if push, err = webpush.NewWebPush(sub); err != nil {
 			return
 		}
 
@@ -75,7 +80,7 @@ func sendPushNotifications(subscriptions []webpush.PushSubscription, payload []b
 	}
 
 	for i, notification := range notifications {
-		var errObj webpush.ErrorObject
+		var errObj errors.ErrorObject
 		var res *http.Response
 
 		log.Printf("sending push notification to recipient: %s of client: %s\n", subscriptions[i].RecipientId, subscriptions[i].ClientId)
@@ -88,19 +93,19 @@ func sendPushNotifications(subscriptions []webpush.PushSubscription, payload []b
 		case http.StatusOK, http.StatusCreated, http.StatusNoContent:
 			continue
 		case http.StatusBadRequest:
-			errObj = webpush.BAD_REQUEST_ERROR.Errors[0]
+			errObj = errors.BAD_REQUEST_ERROR.Errors[0]
 			if statusCode != http.StatusInternalServerError {
 				statusCode = http.StatusBadRequest
 			}
 		case http.StatusNotFound:
-			errObj = webpush.NewErrorResponse(http.StatusNotFound, "subscription not found").Errors[0]
+			errObj = errors.NewErrorResponse(http.StatusNotFound, "subscription not found").Errors[0]
 		case http.StatusGone:
-			errObj = webpush.NewErrorResponse(http.StatusGone, "subscription expired").Errors[0]
+			errObj = errors.NewErrorResponse(http.StatusGone, "subscription expired").Errors[0]
 		case http.StatusTooManyRequests:
-			errObj = webpush.NewErrorResponse(http.StatusTooManyRequests, "too many requests").Errors[0]
+			errObj = errors.NewErrorResponse(http.StatusTooManyRequests, "too many requests").Errors[0]
 			errObj.Detail = fmt.Sprintf("Retry after %s", res.Header.Get("Retry-After"))
 		default:
-			errObj = webpush.NewErrorResponse(http.StatusInternalServerError, "Internal Server Error").Errors[0]
+			errObj = errors.NewErrorResponse(http.StatusInternalServerError, "Internal Server Error").Errors[0]
 			statusCode = http.StatusInternalServerError
 		}
 
@@ -114,7 +119,7 @@ func sendPushNotifications(subscriptions []webpush.PushSubscription, payload []b
 			errObj.Detail = buf.String()
 		}
 
-		errObj.Meta = &webpush.ErrorMeta{
+		errObj.Meta = &errors.ErrorMeta{
 			Endpoint: notification.Endpoint,
 		}
 
@@ -126,7 +131,7 @@ func sendPushNotifications(subscriptions []webpush.PushSubscription, payload []b
 			statusCode = errorObjects[0].Status
 		}
 
-		err = webpush.NewResponseError(&webpush.ErrorResponse{Errors: errorObjects}, statusCode)
+		err = errors.NewResponseError(&errors.ErrorResponse{Errors: errorObjects}, statusCode)
 	}
 
 	return
@@ -134,17 +139,18 @@ func sendPushNotifications(subscriptions []webpush.PushSubscription, payload []b
 
 func HandlePush(w http.ResponseWriter, r *http.Request) {
 	log.Println(r.URL.String())
+	ctx := r.Context()
 	var err error
 
 	var recipientId string
 	if recipientId, err = decodePushRecipient(r); err != nil {
-		webpush.WriteResponseError(w, err)
+		errors.WriteResponseError(w, err)
 		return
 	}
 
 	var clientId string
 	if clientId, err = auth.HandleBasicAuth(r); err != nil {
-		webpush.WriteResponseError(w, err)
+		errors.WriteResponseError(w, err)
 		return
 	}
 
@@ -153,26 +159,26 @@ func HandlePush(w http.ResponseWriter, r *http.Request) {
 			http.CanonicalHeaderKey("allow"): []string{http.MethodPost},
 		}
 
-		webpush.WriteResponseError(w, webpush.NewResponseError(webpush.METHOD_NOT_ALLOWED_ERROR, http.StatusMethodNotAllowed, header))
+		errors.WriteResponseError(w, errors.NewResponseError(errors.METHOD_NOT_ALLOWED_ERROR, http.StatusMethodNotAllowed, header))
 		return
 	}
 
 	contentType := r.Header.Get("Content-Type")
 
-	if contentType != webpush.APPLICATION_JSON && contentType != webpush.TEXT_PLAIN {
+	if contentType != utils.APPLICATION_JSON && contentType != utils.TEXT_PLAIN {
 		header := http.Header{
-			http.CanonicalHeaderKey("accept-post"): []string{webpush.APPLICATION_JSON, webpush.TEXT_PLAIN},
+			http.CanonicalHeaderKey("accept-post"): []string{utils.APPLICATION_JSON, utils.TEXT_PLAIN},
 		}
 
-		payload := webpush.NewErrorResponse(http.StatusUnsupportedMediaType, "unsupported media type")
+		payload := errors.NewErrorResponse(http.StatusUnsupportedMediaType, "unsupported media type")
 
-		webpush.WriteResponseError(w, webpush.NewResponseError(payload, http.StatusUnsupportedMediaType, header))
+		errors.WriteResponseError(w, errors.NewResponseError(payload, http.StatusUnsupportedMediaType, header))
 		return
 	}
 
-	var params *webpush.WebPushDetails
+	var params *request.WebPushDetails
 	if params, err = decodePushParams(r); err != nil {
-		webpush.WriteResponseError(w, err)
+		errors.WriteResponseError(w, err)
 		return
 	}
 
@@ -183,7 +189,7 @@ func HandlePush(w http.ResponseWriter, r *http.Request) {
 	}
 
 	if err = params.Validate(); err != nil {
-		webpush.WriteResponseError(w, err)
+		errors.WriteResponseError(w, err)
 		return
 	}
 
@@ -192,59 +198,59 @@ func HandlePush(w http.ResponseWriter, r *http.Request) {
 	if _, err = buf.ReadFrom(r.Body); err != nil {
 		log.Println(err)
 
-		webpush.WriteResponseError(w, webpush.NewResponseError(webpush.BAD_REQUEST_ERROR, http.StatusBadRequest))
+		errors.WriteResponseError(w, errors.NewResponseError(errors.BAD_REQUEST_ERROR, http.StatusBadRequest))
 		return
 	}
 
 	if len(buf.Bytes()) == 0 {
-		payload := webpush.NewErrorResponse(http.StatusBadRequest, "empty payload")
-		webpush.WriteResponseError(w, webpush.NewResponseError(payload, http.StatusBadRequest))
+		payload := errors.NewErrorResponse(http.StatusBadRequest, "empty payload")
+		errors.WriteResponseError(w, errors.NewResponseError(payload, http.StatusBadRequest))
 		return
 	}
 
-	var db *bun.DB
-	if db, err = webpush.ConnectToDatabase(); err != nil {
+	var conn *bun.DB
+	if conn, err = db.Connect(); err != nil {
 		log.Println(err)
 
-		webpush.WriteResponseError(w, webpush.NewResponseError(webpush.INTERNAL_SERVER_ERROR, http.StatusInternalServerError))
+		errors.WriteResponseError(w, errors.NewResponseError(errors.INTERNAL_SERVER_ERROR, http.StatusInternalServerError))
 		return
 	}
 
-	defer db.Close()
+	defer conn.Close()
 
-	var subs []webpush.PushSubscription
+	var subs []*models.PushSubscription
 	if params.RecipientId != "" {
-		subs, err = webpush.GetSubscriptionsByClientAndRecipient(r.Context(), db, params.ClientId, params.RecipientId)
+		subs, err = models.GetSubscriptionsByClientIdAndRecipientId(ctx, conn, params.ClientId, params.RecipientId)
 
 		if err != nil {
 			log.Println(err)
 
-			webpush.WriteResponseError(w, err)
+			errors.WriteResponseError(w, err)
 			return
 		}
 	} else {
-		subs, err = webpush.GetSubscriptionsByClient(r.Context(), db, params.ClientId)
+		subs, err = models.GetSubscriptionsByClientId(ctx, conn, params.ClientId)
 
 		if err != nil {
 			log.Println(err)
 
-			webpush.WriteResponseError(w, err)
+			errors.WriteResponseError(w, err)
 			return
 		}
 	}
 
 	if len(subs) == 0 {
-		payload := webpush.NewErrorResponse(http.StatusNotFound, "no subscriptions found")
-		webpush.WriteResponseError(w, webpush.NewResponseError(payload, http.StatusNotFound))
+		payload := errors.NewErrorResponse(http.StatusNotFound, "no subscriptions found")
+		errors.WriteResponseError(w, errors.NewResponseError(payload, http.StatusNotFound))
 		return
 	}
 
 	if errorObjects, err := sendPushNotifications(subs, buf.Bytes(), params.WithWebPushParams); err != nil {
 		log.Println(err)
 
-		deleteObsoleteSubscriptions(r.Context(), db, errorObjects)
+		deleteObsoleteSubscriptions(ctx, conn, errorObjects)
 
-		webpush.WriteResponseError(w, err)
+		errors.WriteResponseError(w, err)
 		return
 	}
 

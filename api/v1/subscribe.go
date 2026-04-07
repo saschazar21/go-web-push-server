@@ -6,7 +6,9 @@ import (
 	"net/http"
 
 	"github.com/saschazar21/go-web-push-server/auth"
-	"github.com/saschazar21/go-web-push-server/webpush"
+	"github.com/saschazar21/go-web-push-server/db"
+	"github.com/saschazar21/go-web-push-server/errors"
+	"github.com/saschazar21/go-web-push-server/request"
 	"github.com/uptrace/bun"
 )
 
@@ -15,52 +17,52 @@ func HandleSubscribe(w http.ResponseWriter, r *http.Request) {
 	clientId, err := auth.HandleBasicAuth(r)
 
 	if err != nil {
-		webpush.WriteResponseError(w, err)
+		errors.WriteResponseError(w, err)
 		return
 	}
 
-	sub, err := webpush.ParseSubscription(r)
+	sub, err := request.ParseSubscriptionRequest(r)
 
 	if err != nil {
 		log.Println(err)
 
-		webpush.WriteResponseError(w, err)
+		errors.WriteResponseError(w, err)
 		return
 	}
 
 	if clientId != sub.ClientId {
-		webpush.WriteResponseError(w, webpush.NewResponseError(auth.FORBIDDEN_ERROR, http.StatusBadRequest))
+		errors.WriteResponseError(w, errors.NewResponseError(auth.FORBIDDEN_ERROR, http.StatusBadRequest))
 		return
 	}
 
-	var db *bun.DB
-	db, err = webpush.ConnectToDatabase()
+	var conn *bun.DB
+	conn, err = db.Connect()
 
 	if err != nil {
 		log.Println(err)
 
-		webpush.WriteResponseError(w, err)
+		errors.WriteResponseError(w, err)
 		return
 	}
 
-	defer db.Close()
+	defer conn.Close()
 
 	ctx := r.Context()
 
 	var tx bun.Tx
-	tx, err = db.BeginTx(ctx, &sql.TxOptions{})
+	tx, err = conn.BeginTx(ctx, &sql.TxOptions{})
 
 	if err != nil {
 		log.Println(err)
 
-		webpush.WriteResponseError(w, err)
+		errors.WriteResponseError(w, err)
 		return
 	}
 
 	if err = sub.Save(ctx, tx); err != nil {
 		log.Println(err)
 
-		webpush.WriteResponseError(w, err)
+		errors.WriteResponseError(w, err)
 		tx.Rollback()
 		return
 	}
@@ -68,7 +70,7 @@ func HandleSubscribe(w http.ResponseWriter, r *http.Request) {
 	if err = tx.Commit(); err != nil {
 		log.Println(err)
 
-		webpush.WriteResponseError(w, err)
+		errors.WriteResponseError(w, err)
 		tx.Rollback()
 		return
 	}

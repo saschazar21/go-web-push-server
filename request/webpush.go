@@ -1,4 +1,4 @@
-package webpush
+package request
 
 import (
 	"bytes"
@@ -7,6 +7,10 @@ import (
 	"log"
 	"net/http"
 	"net/url"
+
+	"github.com/saschazar21/go-web-push-server/errors"
+	"github.com/saschazar21/go-web-push-server/utils"
+	"github.com/saschazar21/go-web-push-server/vapid"
 )
 
 const (
@@ -37,38 +41,36 @@ func (r *WebPushRequest) Validate() error {
 		r.TTL = MAX_TTL_VALUE
 	}
 
-	return CustomValidateStruct(r)
+	return utils.CustomValidateStruct(r)
 }
 
 func (r *WebPushRequest) Send() (res *http.Response, err error) {
 	if err = r.Validate(); err != nil {
 		log.Printf("%s: %v\n", r.String(), err)
 
-		return res, NewResponseError(INTERNAL_SERVER_ERROR, http.StatusInternalServerError)
+		return res, errors.NewResponseError(errors.INTERNAL_SERVER_ERROR, http.StatusInternalServerError)
 	}
 
 	var req *http.Request
 
 	if req, err = http.NewRequest(http.MethodPost, r.Endpoint, bytes.NewBuffer(r.Payload)); err != nil {
-		return res, NewResponseError(INTERNAL_SERVER_ERROR, http.StatusInternalServerError)
+		return res, errors.NewResponseError(errors.INTERNAL_SERVER_ERROR, http.StatusInternalServerError)
 	}
 
 	var jwt, key string
 
-	if jwt, key, err = NewVAPID(r.getOrigin()); err != nil {
+	if jwt, key, err = vapid.NewVAPID(r.getOrigin()); err != nil {
 		log.Println(err)
 
-		return res, NewResponseError(INTERNAL_SERVER_ERROR, http.StatusInternalServerError)
+		return res, errors.NewResponseError(errors.INTERNAL_SERVER_ERROR, http.StatusInternalServerError)
 	}
 
 	req.Header = http.Header{
-		http.CanonicalHeaderKey("Authorization"):    {fmt.Sprintf("WebPush %s", jwt)},
+		http.CanonicalHeaderKey("Authorization"):    {fmt.Sprintf("vapid t=%s,k=%s", jwt, key)},
 		http.CanonicalHeaderKey("Content-Encoding"): {"aes128gcm"},
 		http.CanonicalHeaderKey("Content-Type"):     {"application/octet-stream"},
-		http.CanonicalHeaderKey("Crypto-Key"):       {fmt.Sprintf("dh=%s;p256ecdsa=%s", r.WithPublicKey.String(), key)},
-		http.CanonicalHeaderKey("Encryption"):       {fmt.Sprintf("salt=%s", r.WithSalt.String())},
 		http.CanonicalHeaderKey("TTL"):              {fmt.Sprintf("%d", r.TTL)},
-		// Microsoft Edge header values: https://learn.microsoft.com/en-us/windows/apps/design/shell/tiles-and-notifications/push-request-response-headers#request-parameters
+		// Microsoft Edge header values
 		"X-WNS-Type":         {"wns/raw"},
 		"X-WNS-Cache-Policy": {"cache"},
 	}
@@ -90,7 +92,7 @@ func (r *WebPushRequest) Send() (res *http.Response, err error) {
 	if res, err = client.Do(req); err != nil {
 		log.Println(err)
 
-		return nil, NewResponseError(INTERNAL_SERVER_ERROR, http.StatusInternalServerError)
+		return nil, errors.NewResponseError(errors.INTERNAL_SERVER_ERROR, http.StatusInternalServerError)
 	}
 
 	return

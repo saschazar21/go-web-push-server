@@ -3,7 +3,6 @@ package webpush
 import (
 	"crypto/ecdh"
 	"crypto/sha256"
-	"encoding/base64"
 	"fmt"
 	"io"
 	"log"
@@ -11,20 +10,11 @@ import (
 	"golang.org/x/crypto/hkdf"
 )
 
-func decodePublicKey(enc string) (pubKey *ecdh.PublicKey, err error) {
-	var buf []byte
-
-	if buf, err = base64.RawURLEncoding.DecodeString(enc); err != nil {
-		log.Println(err)
-
-		return nil, fmt.Errorf("failed to decode Base64URL encoded public key")
-	}
-
+func decodePublicKey(buf []byte) (pubKey *ecdh.PublicKey, err error) {
 	curve := ecdh.P256()
 
 	if pubKey, err = curve.NewPublicKey(buf); err != nil {
 		log.Println(err)
-
 		return pubKey, fmt.Errorf("failed to decode bytes into ECDH public key")
 	}
 
@@ -40,7 +30,6 @@ func deriveKey(secret, salt, info []byte, length uint) (buf []byte, err error) {
 
 	if written, err = io.ReadFull(reader, buf); err != nil {
 		log.Println(err)
-
 		return nil, fmt.Errorf("failed to read derived key into buffer")
 	}
 

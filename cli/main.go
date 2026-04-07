@@ -4,11 +4,11 @@ import (
 	"fmt"
 	"log"
 
-	"github.com/saschazar21/go-web-push-server/webpush"
+	"github.com/saschazar21/go-web-push-server/vapid"
 )
 
 func main() {
-	key, err := webpush.GenerateVapidKey()
+	key, err := vapid.GenerateVapidKey()
 
 	if err != nil {
 		log.Fatalf("%v", err)

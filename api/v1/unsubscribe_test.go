@@ -2,6 +2,7 @@ package v1
 
 import (
 	"context"
+	"encoding/base64"
 	"io"
 	"log"
 	"net/http"
@@ -10,8 +11,10 @@ import (
 	"testing"
 
 	"github.com/saschazar21/go-web-push-server/auth"
+	"github.com/saschazar21/go-web-push-server/db"
+	"github.com/saschazar21/go-web-push-server/models"
 	webpush_test "github.com/saschazar21/go-web-push-server/test"
-	"github.com/saschazar21/go-web-push-server/webpush"
+	"github.com/saschazar21/go-web-push-server/utils"
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 	"github.com/uptrace/bun/extra/bundebug"
 )
@@ -126,25 +129,47 @@ func TestHandleUnsubscribe(t *testing.T) {
 		},
 	}
 
-	db, err := webpush.ConnectToDatabase()
+	decodedClientKey, err := base64.RawURLEncoding.DecodeString(rec.Subscription.Keys.P256DH)
+	if err != nil {
+		t.Fatalf("failed to decode client key: %v", err)
+	}
 
-	db.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(true)))
+	decodedAuthSecret, err := base64.RawURLEncoding.DecodeString(rec.Subscription.Keys.Auth)
+	if err != nil {
+		t.Fatalf("failed to decode auth secret: %v", err)
+	}
+
+	// save test subscription
+	sub := &models.PushSubscription{
+		ClientId:    rec.Subscription.ClientId,
+		RecipientId: rec.Subscription.RecipientId,
+		Endpoint:    (*utils.EncryptedString)(&rec.Subscription.Endpoint),
+		Keys: &models.SubscriptionKeys{
+			P256DH:     (*utils.EncryptedBytes)(&decodedClientKey),
+			AuthSecret: (*utils.EncryptedBytes)(&decodedAuthSecret),
+		},
+	}
+
+	conn, err := db.Connect()
+
+	conn.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(true)))
 
 	if err != nil {
 		t.Fatalf("TestPostgres err = %v, wantErr = %v", err, nil)
 	}
 
-	// save test subscription
-	if _, err = db.NewRaw("INSERT INTO subscription (client_id, recipient_id, endpoint) VALUES (?, ?, ?)", rec.Subscription.ClientId, rec.Subscription.RecipientId, rec.Subscription.Endpoint).Exec(ctx); err != nil {
+	if _, err := conn.NewInsert().Model(sub).Exec(ctx); err != nil {
 		t.Fatalf("TestPostgres err = %v, wantErr = %v", err, nil)
 	}
 
-	// save test keys
-	if _, err = db.NewRaw("INSERT INTO keys (p256dh, auth_secret, subscription_endpoint) VALUES (?, ?, ?)", rec.Subscription.Keys.P256DH, rec.Subscription.Keys.Auth, rec.Subscription.Endpoint).Exec(ctx); err != nil {
-		t.Fatalf("TestPostgres err = %v, wantErr = %v", err, nil)
+	if sub.Keys != nil {
+		sub.Keys.PushSubscriptionHash = sub.Hash
+		if _, err := conn.NewInsert().Model(sub.Keys).Exec(ctx); err != nil {
+			t.Fatalf("TestPostgres err = %v, wantErr = %v", err, nil)
+		}
 	}
 
-	db.Close()
+	conn.Close()
 
 	if err = c.Snapshot(ctx, postgres.WithSnapshotName("unsubscribe")); err != nil {
 		t.Fatalf("TestPostgres err = %v, wantErr = %v", err, nil)

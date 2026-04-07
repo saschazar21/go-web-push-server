@@ -10,7 +10,7 @@ import (
 
 	"github.com/saschazar21/go-web-push-server/auth"
 	webpush_test "github.com/saschazar21/go-web-push-server/test"
-	"github.com/saschazar21/go-web-push-server/webpush"
+	"github.com/saschazar21/go-web-push-server/utils"
 	"gotest.tools/v3/assert"
 )
 
@@ -129,7 +129,7 @@ func TestHandleSubscribe(t *testing.T) {
 			}
 
 			req, _ := http.NewRequest(tt.method, server.URL, bytes.NewBuffer(buf))
-			req.Header.Add("content-type", webpush.APPLICATION_JSON)
+			req.Header.Add("content-type", utils.APPLICATION_JSON)
 
 			clientId := ""
 			if recipient, ok := tt.payload.(recipient); ok {

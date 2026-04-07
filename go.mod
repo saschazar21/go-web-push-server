@@ -1,4 +1,4 @@
-module v1
+module github.com/saschazar21/go-web-push-server
 
 go 1.22.2
 

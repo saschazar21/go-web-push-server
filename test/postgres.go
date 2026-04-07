@@ -8,6 +8,7 @@ import (
 	"testing"
 
 	_ "github.com/lib/pq"
+	"github.com/saschazar21/go-web-push-server/utils"
 
 	"github.com/testcontainers/testcontainers-go/modules/postgres"
 )
@@ -56,7 +57,9 @@ func CreateContainer(ctx context.Context, t *testing.T) (container *postgres.Pos
 		log.Fatalf("failed to retrieve DB connection string: %v", err)
 	}
 
-	t.Setenv("POSTGRES_CONNECTION_STRING", dsn)
+	t.Setenv(utils.MASTER_KEY_ENV, "l342tf9eC2l4/fVytEkkzQzYyqd3eKd6GViw65WB5yI=")
+	t.Setenv(utils.POSTGRES_CONNECTION_STRING_ENV, dsn)
+	t.Setenv("DEBUG", "2")
 
 	container = c
 
