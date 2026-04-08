@@ -5,6 +5,7 @@ import (
 	"fmt"
 	"log"
 	"net/http"
+	"strings"
 
 	"github.com/saschazar21/go-web-push-server/errors"
 	"github.com/saschazar21/go-web-push-server/utils"
@@ -19,9 +20,9 @@ func ParseBody(req *http.Request, iface any) (err error) {
 		return errors.NewResponseError(errors.METHOD_NOT_ALLOWED_ERROR, http.StatusMethodNotAllowed, headers)
 	}
 
-	contentType := req.Header.Get("content-type")
+	contentType := req.Header.Get("Content-Type")
 
-	if contentType != utils.APPLICATION_JSON {
+	if !strings.HasPrefix(contentType, utils.APPLICATION_JSON) {
 		payload := errors.NewErrorResponse(http.StatusBadRequest, fmt.Sprintf("content-type must equal %s", utils.APPLICATION_JSON))
 		return errors.NewResponseError(payload, http.StatusBadRequest)
 	}
