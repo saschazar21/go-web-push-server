@@ -3,8 +3,14 @@
 !.vercel
 !api
 !auth
+!db
+!errors
+!models
 !public
+!request
 !test
+!utils
+!vapid
 !webpush
 
 !.tool-versions

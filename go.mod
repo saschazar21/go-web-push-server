@@ -1,6 +1,6 @@
 module github.com/saschazar21/go-web-push-server
 
-go 1.22.2
+go 1.24.4
 
 require (
 	github.com/aws/aws-lambda-go v1.47.0
