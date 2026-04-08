@@ -1,4 +1,4 @@
-.PHONY: test clean
+.PHONY: build build_website test clean
 
 build: build_website
 	sh -c ./build.sh

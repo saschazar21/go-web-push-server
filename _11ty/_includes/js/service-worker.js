@@ -6,7 +6,7 @@ const refresh = () => {
   }
 
   isRefreshing = true;
-  window.location.reload();
+  globalThis.location.reload();
 };
 
 window.addEventListener("load", async () => {
@@ -22,7 +22,7 @@ window.addEventListener("load", async () => {
 
           worker.addEventListener("statechange", () => {
             worker.state === "installed" &&
-              worker.postMessage({ action: "skipWaiting" });
+              worker.postMessage({ type: "SKIP_WAITING" });
           });
         });
 
