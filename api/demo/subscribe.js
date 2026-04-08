@@ -43,6 +43,7 @@ export default async (req) => {
 
   const subscription = {
     clientId: "demo",
+    id: req.headers.get("x-device-id") || "demo",
     subscription: body,
   };
 

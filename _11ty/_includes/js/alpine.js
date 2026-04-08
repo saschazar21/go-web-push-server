@@ -21,6 +21,16 @@ document.addEventListener("alpine:init", () => {
     reg: null,
     toast: null,
 
+    getDeviceId() {
+      let deviceId = localStorage.getItem("deviceId");
+
+      if (!deviceId) {
+        deviceId = crypto.randomUUID();
+        localStorage.setItem("deviceId", deviceId);
+      }
+
+      return deviceId;
+    },
     showToast(message, duration = 5000) {
       this.toast = message;
       setTimeout(() => {
@@ -67,7 +77,10 @@ document.addEventListener("alpine:init", () => {
           method: "POST",
           body: JSON.stringify(subscription),
           credentials: "same-origin",
-          headers: { "content-type": "application/json" },
+          headers: {
+            "content-type": "application/json",
+            "x-device-id": this.getDeviceId(),
+          },
         });
 
         if (res.status === 201) {
@@ -82,7 +95,7 @@ document.addEventListener("alpine:init", () => {
       } catch (e) {
         console.error(e);
 
-        this.showToast("Something went wrong");
+        this.showToast(e.message || "Something went wrong");
         console.error("Failed to register push subscription!");
       } finally {
         this.isLoading = false;
@@ -110,7 +123,7 @@ document.addEventListener("alpine:init", () => {
       } catch (e) {
         console.error(e);
 
-        this.showToast("Something went wrong");
+        this.showToast(e.message || "Something went wrong");
         console.error("Failed to unregister push subscription!");
       } finally {
         this.isLoading = false;
