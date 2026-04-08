@@ -39,27 +39,42 @@ document.addEventListener("alpine:init", () => {
     },
     async init() {
       if (!("serviceWorker" in navigator)) {
-        console.warn("Service workers are not supported in this browser.");
+        console.warn("Service Workers are not supported in this browser.");
+        this.showToast("Service Workers are not supported in this browser.");
         return;
       }
 
       if (!("showNotification" in ServiceWorkerRegistration.prototype)) {
         console.warn("Notifications are not supported in this browser.");
+        this.showToast("Notifications are not supported in this browser.");
         return;
       }
 
       if (!("PushManager" in globalThis)) {
-        console.warn("Push notifications are not supported in this browser.");
+        console.warn("Push Notifications are not supported in this browser.");
+        this.showToast("Push Notifications are not supported in this browser.");
         return;
       }
 
-      const reg = await navigator.serviceWorker.ready;
+      try {
+        const reg = await navigator.serviceWorker.ready;
 
-      this.reg = reg;
-      this.isDisabled = false;
+        this.reg = reg;
+        this.isDisabled = false;
+
+        const subscription = await reg.pushManager.getSubscription();
+
+        this.isSubscribed = !!subscription;
+      } catch (e) {
+        console.error("Service Worker registration failed", e);
+        this.showToast("Service Worker registration failed");
+      }
     },
     async subscribe() {
       if (!this.reg) {
+        this.showToast(
+          "Service Worker is not ready yet. Please try again later.",
+        );
         return;
       }
 

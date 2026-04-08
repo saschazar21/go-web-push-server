@@ -30,28 +30,24 @@ function handlePushEvent(event) {
 
   if (event.data) {
     try {
-      data = { title: "New push message", ...event.data.json() };
-    } catch (_e) {
-      data = { title: "New push message", body: event.data.text() };
+      data = {
+        title: "New push message",
+        icon: "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f3c4.png",
+        tag: "custom",
+        ...event.data.json(),
+      };
+    } catch (e) {
+      console.error("Failed to parse push event data as JSON", e);
+
+      data = {
+        title: "New push message",
+        body: event.data.text(),
+        icon: "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f3ca.png",
+        tag: "default",
+      };
     }
   } else {
     data = { title: "New notification", body: "" };
-  }
-
-  try {
-    data = {
-      title: "New push message",
-      icon: "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f3c4.png",
-      tag: "custom",
-      ...event.data.json(),
-    };
-  } catch (_e) {
-    data = {
-      title: "New push message",
-      body: event.data.text(),
-      icon: "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f3ca.png",
-      tag: "default",
-    };
   }
 
   const showNotification = self.registration.showNotification(data.title, {
