@@ -32,7 +32,7 @@ function handlePushEvent(event) {
     try {
       data = {
         title: "New push message",
-        icon: "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f3c4.png",
+        icon: "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f468.png",
         tag: "custom",
         ...event.data.json(),
       };
@@ -42,12 +42,16 @@ function handlePushEvent(event) {
       data = {
         title: "New push message",
         body: event.data.text(),
-        icon: "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f3ca.png",
+        icon: "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f978.png",
         tag: "default",
       };
     }
   } else {
-    data = { title: "New notification", body: "" };
+    data = {
+      title: "New notification",
+      body: "Notification did not contain any data!",
+      icon: "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f629.png",
+    };
   }
 
   const showNotification = self.registration.showNotification(data.title, {

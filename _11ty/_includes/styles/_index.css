@@ -6,7 +6,7 @@
   --gray: hsla(210, 12%, 55%, 1); /* Secondary text */
   --gray-2: hsla(210, 10%, 65%, 1); /* Muted accents */
   --silver: hsla(210, 15%, 92%, 1); /* Light text / icon highlights */
-  --white: hsla(0, 0%, 100%, 1);
+  --white: hsla(0, 0%, 95%, 1);
 
   /* Accents */
   --accent-cyan: hsla(185, 65%, 52%, 1); /* Subtle cyan glow / key highlight */

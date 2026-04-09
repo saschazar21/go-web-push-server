@@ -1,6 +1,7 @@
 {
   "name": "@saschazar/go-web-push-server",
   "title": "go-web-push-server",
+  "app_name": "push-server",
   "version": "1.0.0",
   "description": "A web push server written in Go",
   "scripts": {
