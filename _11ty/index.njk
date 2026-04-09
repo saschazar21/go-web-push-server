@@ -45,6 +45,10 @@ layout: default.njk
   <strong>⚠️ Caution:</strong> Push messages likely do not work in incognito mode. Make sure to allow notifications for this site. Check the browser console for more information.
 </p>
 
+<p data-notification>
+  <strong>ℹ️ Note:</strong> For web push messages to work on iPhones, the web site needs to be added to the home screen (See documentation on <a href="https://developer.apple.com/documentation/usernotifications/sending-web-push-notifications-in-web-apps-and-browsers" target="_blank" rel="noopener noreferrer">developer.apple.com</a>).
+</p>
+
 <script>
   window.VAPID_PUBLIC_KEY = "{{ vapid.publicKey | safe }}";
 
