@@ -1,3 +1,8 @@
+## [1.0.1] - 2026-04-09
+
+### ⚙️ Miscellaneous Tasks
+
+- Upgraded website (#10)
 ## [1.0.0] - 2026-04-09
 
 ### 🚀 Features
