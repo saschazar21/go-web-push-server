@@ -1,22 +1,24 @@
 importScripts(
-  "https://cdn.jsdelivr.net/npm/workbox-sw@7.3.0/build/workbox-sw.min.js"
+  "https://cdn.jsdelivr.net/npm/workbox-sw@7.3.0/build/workbox-sw.min.js",
 );
 
 function handleNotificationClick(event) {
   event.notification.close();
 
-  event.waitUntil(
-    clients.matchAll({ type: "window" }).then((clientList) => {
-      for (const client of clientList) {
-        if ("focus" in client) {
-          return client.focus();
-        }
-      }
+  const targetUrl = event.notification.data?.url || "/";
 
-      if (clients.openWindow && event.notification.data?.url) {
-        return clients.openWindow(event.data.url);
-      }
-    })
+  event.waitUntil(
+    clients
+      .matchAll({ type: "window", includeUncontrolled: true })
+      .then((clientList) => {
+        // Try to focus an existing tab with the same URL
+        for (const client of clientList) {
+          if (client.url === targetUrl && "focus" in client) {
+            return client.focus();
+          }
+        }
+        return clients.openWindow(targetUrl);
+      }),
   );
 }
 
@@ -25,20 +27,27 @@ self.addEventListener("notificationclick", handleNotificationClick);
 // inspired by: https://github.com/GoogleChrome/samples/blob/gh-pages/push-messaging-and-notifications/service-worker.js
 function handlePushEvent(event) {
   let data;
-  try {
-    data = {
-      title: "New push message",
-      icon: "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f3c4.png",
-      tag: "custom",
-      ...event.data.json(),
-    };
-  } catch (_e) {
-    data = {
-      title: "New push message",
-      body: event.data.text(),
-      icon: "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f3ca.png",
-      tag: "default",
-    };
+
+  if (event.data) {
+    try {
+      data = {
+        title: "New push message",
+        icon: "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f3c4.png",
+        tag: "custom",
+        ...event.data.json(),
+      };
+    } catch (e) {
+      console.error("Failed to parse push event data as JSON", e);
+
+      data = {
+        title: "New push message",
+        body: event.data.text(),
+        icon: "https://raw.githubusercontent.com/twitter/twemoji/master/assets/72x72/1f3ca.png",
+        tag: "default",
+      };
+    }
+  } else {
+    data = { title: "New notification", body: "" };
   }
 
   const showNotification = self.registration.showNotification(data.title, {
@@ -46,6 +55,7 @@ function handlePushEvent(event) {
     icon: data.icon,
     tag: data.tag,
     renotify: data.renotify ?? true,
+    data: { url: data.url },
   });
 
   event.waitUntil(showNotification);
@@ -70,7 +80,7 @@ workbox.routing.registerRoute(
         maxEntries: 30,
       }),
     ],
-  })
+  }),
 );
 
 workbox.precaching.precacheAndRoute(self.__WB_MANIFEST);

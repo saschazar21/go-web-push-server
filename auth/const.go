@@ -3,7 +3,7 @@ package auth
 import (
 	"net/http"
 
-	"github.com/saschazar21/go-web-push-server/webpush"
+	"github.com/saschazar21/go-web-push-server/errors"
 )
 
 const (
@@ -11,8 +11,8 @@ const (
 )
 
 var (
-	FORBIDDEN_ERROR = &webpush.ErrorResponse{
-		Errors: []webpush.ErrorObject{
+	FORBIDDEN_ERROR = &errors.ErrorResponse{
+		Errors: []errors.ErrorObject{
 			{
 				Status: http.StatusForbidden,
 				Title:  "Forbidden",
@@ -20,8 +20,8 @@ var (
 		},
 	}
 
-	UNAUTHORIZED_ERROR = &webpush.ErrorResponse{
-		Errors: []webpush.ErrorObject{
+	UNAUTHORIZED_ERROR = &errors.ErrorResponse{
+		Errors: []errors.ErrorObject{
 			{
 				Status: http.StatusUnauthorized,
 				Title:  "Unauthorized",

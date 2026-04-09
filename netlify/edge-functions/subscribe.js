@@ -43,13 +43,14 @@ export default async (req) => {
 
   const subscription = {
     clientId: "demo",
+    id: req.headers.get("x-device-id") || "demo",
     subscription: body,
   };
 
   const headers = {
     "content-type": "application/json",
     authorization: `Basic ${btoa(
-      `demo:${Netlify.env.get("BASIC_AUTH_PASSWORD")}`
+      `demo:${Netlify.env.get("BASIC_AUTH_PASSWORD")}`,
     )}`,
   };
 

@@ -3,6 +3,7 @@ package v1
 import (
 	"bytes"
 	"context"
+	"encoding/base64"
 	"log"
 	"net/http"
 	"net/http/httptest"
@@ -11,8 +12,11 @@ import (
 	"testing"
 
 	"github.com/saschazar21/go-web-push-server/auth"
+	"github.com/saschazar21/go-web-push-server/db"
+	"github.com/saschazar21/go-web-push-server/models"
+	"github.com/saschazar21/go-web-push-server/request"
 	webpush_test "github.com/saschazar21/go-web-push-server/test"
-	"github.com/saschazar21/go-web-push-server/webpush"
+	"github.com/saschazar21/go-web-push-server/utils"
 	"github.com/uptrace/bun"
 	"github.com/uptrace/bun/extra/bundebug"
 	"gotest.tools/v3/assert"
@@ -22,15 +26,15 @@ func TestHandlePush(t *testing.T) {
 	basicAuthPassword := "123"
 	t.Setenv(auth.BASIC_AUTH_PASSWORD_ENV, basicAuthPassword)
 	t.Setenv("CWD", "../../")
-	t.Setenv(webpush.VAPID_EXPIRY_DURATION_ENV, "300")
-	t.Setenv(webpush.VAPID_PRIVATE_KEY_ENV, `
+	t.Setenv(utils.VAPID_EXPIRY_DURATION_ENV, "300")
+	t.Setenv(utils.VAPID_PRIVATE_KEY_ENV, `
 -----BEGIN EC PRIVATE KEY-----
 MHcCAQEEIEpu5SUVppsnLW/X1f6Mv8h8LES1g+O/gLavQhqn4oa6oAoGCCqGSM49
 AwEHoUQDQgAE06wJJOQ3HWq9+MoyF4THhhV83ca/GdmkQ562OfZiisuu6/latYaX
 8gYZEShGYkSTaQx4a1Xjp6EZ/khPLHcuvQ==
 -----END EC PRIVATE KEY-----	
 `)
-	t.Setenv(webpush.VAPID_SUBJECT_ENV, "test@example.com")
+	t.Setenv(utils.VAPID_SUBJECT_ENV, "test@example.com")
 
 	type keys struct {
 		P256DH string `json:"p256dh"`
@@ -55,7 +59,7 @@ AwEHoUQDQgAE06wJJOQ3HWq9+MoyF4THhhV83ca/GdmkQ562OfZiisuu6/latYaX
 		name          string
 		method        string
 		contentType   string
-		params        *webpush.WebPushDetails
+		params        *request.WebPushDetails
 		payload       []byte
 		triggerStatus int
 		wantStatus    int
@@ -77,10 +81,10 @@ AwEHoUQDQgAE06wJJOQ3HWq9+MoyF4THhhV83ca/GdmkQ562OfZiisuu6/latYaX
 		{
 			"should return 401 Unauthorized on missing client ID",
 			http.MethodPost,
-			webpush.TEXT_PLAIN,
-			&webpush.WebPushDetails{
+			utils.TEXT_PLAIN,
+			&request.WebPushDetails{
 				RecipientId: "test user",
-				WithWebPushParams: &webpush.WithWebPushParams{
+				WithWebPushParams: &request.WithWebPushParams{
 					TTL: 0,
 				},
 			},
@@ -91,11 +95,11 @@ AwEHoUQDQgAE06wJJOQ3HWq9+MoyF4THhhV83ca/GdmkQ562OfZiisuu6/latYaX
 		{
 			"should return 400 Bad Request on missing body",
 			http.MethodPost,
-			webpush.TEXT_PLAIN,
-			&webpush.WebPushDetails{
+			utils.TEXT_PLAIN,
+			&request.WebPushDetails{
 				ClientId:    "test client",
 				RecipientId: "test user",
-				WithWebPushParams: &webpush.WithWebPushParams{
+				WithWebPushParams: &request.WithWebPushParams{
 					TTL: 0,
 				},
 			},
@@ -106,11 +110,11 @@ AwEHoUQDQgAE06wJJOQ3HWq9+MoyF4THhhV83ca/GdmkQ562OfZiisuu6/latYaX
 		{
 			"should return 413 Request Entity Too Large on body that is too large",
 			http.MethodPost,
-			webpush.TEXT_PLAIN,
-			&webpush.WebPushDetails{
+			utils.TEXT_PLAIN,
+			&request.WebPushDetails{
 				ClientId:    "test client",
 				RecipientId: "test user",
-				WithWebPushParams: &webpush.WithWebPushParams{
+				WithWebPushParams: &request.WithWebPushParams{
 					TTL: 0,
 				},
 			},
@@ -121,11 +125,11 @@ AwEHoUQDQgAE06wJJOQ3HWq9+MoyF4THhhV83ca/GdmkQ562OfZiisuu6/latYaX
 		{
 			"should return 405 Method Not Allowed on invalid method",
 			http.MethodGet,
-			webpush.TEXT_PLAIN,
-			&webpush.WebPushDetails{
+			utils.TEXT_PLAIN,
+			&request.WebPushDetails{
 				ClientId:    "test client",
 				RecipientId: "test user",
-				WithWebPushParams: &webpush.WithWebPushParams{
+				WithWebPushParams: &request.WithWebPushParams{
 					TTL: 0,
 				},
 			},
@@ -137,10 +141,10 @@ AwEHoUQDQgAE06wJJOQ3HWq9+MoyF4THhhV83ca/GdmkQ562OfZiisuu6/latYaX
 			"should return 415 Unsupported Media Type on invalid content type",
 			http.MethodPost,
 			"text/html",
-			&webpush.WebPushDetails{
+			&request.WebPushDetails{
 				ClientId:    "test client",
 				RecipientId: "test user",
-				WithWebPushParams: &webpush.WithWebPushParams{
+				WithWebPushParams: &request.WithWebPushParams{
 					TTL: 0,
 				},
 			},
@@ -151,11 +155,11 @@ AwEHoUQDQgAE06wJJOQ3HWq9+MoyF4THhhV83ca/GdmkQ562OfZiisuu6/latYaX
 		{
 			"should return 404 Not Found on missing subscription",
 			http.MethodPost,
-			webpush.TEXT_PLAIN,
-			&webpush.WebPushDetails{
+			utils.TEXT_PLAIN,
+			&request.WebPushDetails{
 				ClientId:    "test client",
 				RecipientId: "missing user",
-				WithWebPushParams: &webpush.WithWebPushParams{
+				WithWebPushParams: &request.WithWebPushParams{
 					TTL: 0,
 				},
 			},
@@ -166,11 +170,11 @@ AwEHoUQDQgAE06wJJOQ3HWq9+MoyF4THhhV83ca/GdmkQ562OfZiisuu6/latYaX
 		{
 			"triggers 400 Bad Request",
 			http.MethodPost,
-			webpush.TEXT_PLAIN,
-			&webpush.WebPushDetails{
+			utils.TEXT_PLAIN,
+			&request.WebPushDetails{
 				ClientId:    "test client",
 				RecipientId: "test user",
-				WithWebPushParams: &webpush.WithWebPushParams{
+				WithWebPushParams: &request.WithWebPushParams{
 					TTL: 0,
 				},
 			},
@@ -181,11 +185,11 @@ AwEHoUQDQgAE06wJJOQ3HWq9+MoyF4THhhV83ca/GdmkQ562OfZiisuu6/latYaX
 		{
 			"triggers 404 Not Found",
 			http.MethodPost,
-			webpush.TEXT_PLAIN,
-			&webpush.WebPushDetails{
+			utils.TEXT_PLAIN,
+			&request.WebPushDetails{
 				ClientId:    "test client",
 				RecipientId: "test user",
-				WithWebPushParams: &webpush.WithWebPushParams{
+				WithWebPushParams: &request.WithWebPushParams{
 					TTL: 0,
 				},
 			},
@@ -196,11 +200,11 @@ AwEHoUQDQgAE06wJJOQ3HWq9+MoyF4THhhV83ca/GdmkQ562OfZiisuu6/latYaX
 		{
 			"triggers 410 Gone",
 			http.MethodPost,
-			webpush.TEXT_PLAIN,
-			&webpush.WebPushDetails{
+			utils.TEXT_PLAIN,
+			&request.WebPushDetails{
 				ClientId:    "test client",
 				RecipientId: "test user",
-				WithWebPushParams: &webpush.WithWebPushParams{
+				WithWebPushParams: &request.WithWebPushParams{
 					TTL: 0,
 				},
 			},
@@ -211,11 +215,11 @@ AwEHoUQDQgAE06wJJOQ3HWq9+MoyF4THhhV83ca/GdmkQ562OfZiisuu6/latYaX
 		{
 			"triggers 429 Gone",
 			http.MethodPost,
-			webpush.TEXT_PLAIN,
-			&webpush.WebPushDetails{
+			utils.TEXT_PLAIN,
+			&request.WebPushDetails{
 				ClientId:    "test client",
 				RecipientId: "test user",
-				WithWebPushParams: &webpush.WithWebPushParams{
+				WithWebPushParams: &request.WithWebPushParams{
 					TTL: 0,
 				},
 			},
@@ -226,11 +230,11 @@ AwEHoUQDQgAE06wJJOQ3HWq9+MoyF4THhhV83ca/GdmkQ562OfZiisuu6/latYaX
 		{
 			"returns 500 Internal Server Error on unknown status code",
 			http.MethodPost,
-			webpush.TEXT_PLAIN,
-			&webpush.WebPushDetails{
+			utils.TEXT_PLAIN,
+			&request.WebPushDetails{
 				ClientId:    "test client",
 				RecipientId: "test user",
-				WithWebPushParams: &webpush.WithWebPushParams{
+				WithWebPushParams: &request.WithWebPushParams{
 					TTL: 0,
 				},
 			},
@@ -241,11 +245,11 @@ AwEHoUQDQgAE06wJJOQ3HWq9+MoyF4THhhV83ca/GdmkQ562OfZiisuu6/latYaX
 		{
 			"should return 201 for successful push messages by client & recipient ID",
 			http.MethodPost,
-			webpush.TEXT_PLAIN,
-			&webpush.WebPushDetails{
+			utils.TEXT_PLAIN,
+			&request.WebPushDetails{
 				ClientId:    "test client",
 				RecipientId: "test user",
-				WithWebPushParams: &webpush.WithWebPushParams{
+				WithWebPushParams: &request.WithWebPushParams{
 					TTL: 0,
 				},
 			},
@@ -256,10 +260,10 @@ AwEHoUQDQgAE06wJJOQ3HWq9+MoyF4THhhV83ca/GdmkQ562OfZiisuu6/latYaX
 		{
 			"should return 201 for successful push messages by client ID",
 			http.MethodPost,
-			webpush.TEXT_PLAIN,
-			&webpush.WebPushDetails{
+			utils.TEXT_PLAIN,
+			&request.WebPushDetails{
 				ClientId: "test client",
-				WithWebPushParams: &webpush.WithWebPushParams{
+				WithWebPushParams: &request.WithWebPushParams{
 					TTL: 0,
 				},
 			},
@@ -271,14 +275,14 @@ AwEHoUQDQgAE06wJJOQ3HWq9+MoyF4THhhV83ca/GdmkQ562OfZiisuu6/latYaX
 
 	for _, tt := range tests {
 		t.Run(tt.name, func(t *testing.T) {
-			var db *bun.DB
+			var conn *bun.DB
 			var err error
 			var applicationServer *httptest.Server
 			var pushServer *httptest.Server
 			var u *url.URL
 
 			t.Cleanup(func() {
-				db.Close()
+				conn.Close()
 				pushServer.Close()
 				c.Restore(ctx)
 			})
@@ -303,26 +307,47 @@ AwEHoUQDQgAE06wJJOQ3HWq9+MoyF4THhhV83ca/GdmkQ562OfZiisuu6/latYaX
 				},
 			}
 
-			db, err = webpush.ConnectToDatabase()
+			decodedClientKey, err := base64.RawURLEncoding.DecodeString(rec.Subscription.Keys.P256DH)
+			if err != nil {
+				t.Fatalf("failed to decode client key: %v", err)
+			}
+
+			decodedAuthSecret, err := base64.RawURLEncoding.DecodeString(rec.Subscription.Keys.Auth)
+			if err != nil {
+				t.Fatalf("failed to decode auth secret: %v", err)
+			}
+
+			sub := &models.PushSubscription{
+				ClientId:    rec.Subscription.ClientId,
+				RecipientId: rec.Subscription.RecipientId,
+				Endpoint:    (*utils.EncryptedString)(&rec.Subscription.Endpoint),
+				Keys: &models.SubscriptionKeys{
+					P256DH:     (*utils.EncryptedBytes)(&decodedClientKey),
+					AuthSecret: (*utils.EncryptedBytes)(&decodedAuthSecret),
+				},
+			}
+
+			conn, err = db.Connect()
 
 			if err != nil {
 				t.Fatalf("TestHandlePush err = %v, wantErr = %v", err, nil)
 			}
 
-			db.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(true)))
+			conn.AddQueryHook(bundebug.NewQueryHook(bundebug.WithVerbose(true)))
 
 			if err != nil {
 				t.Fatalf("TestPostgres err = %v, wantErr = %v", err, nil)
 			}
 
-			// save test subscription
-			if _, err = db.NewRaw("INSERT INTO subscription (client_id, recipient_id, endpoint) VALUES (?, ?, ?)", rec.Subscription.ClientId, rec.Subscription.RecipientId, rec.Subscription.Endpoint).Exec(ctx); err != nil {
-				t.Fatalf("TestPostgres err = %v, wantErr = %v", err, nil)
+			if _, err := conn.NewInsert().Model(sub).Exec(ctx); err != nil {
+				t.Fatalf("TestHandlePush err = %v, wantErr = %v", err, nil)
 			}
 
-			// save test keys
-			if _, err = db.NewRaw("INSERT INTO keys (p256dh, auth_secret, subscription_endpoint) VALUES (?, ?, ?)", rec.Subscription.Keys.P256DH, rec.Subscription.Keys.Auth, rec.Subscription.Endpoint).Exec(ctx); err != nil {
-				t.Fatalf("TestPostgres err = %v, wantErr = %v", err, nil)
+			if sub.Keys != nil {
+				sub.Keys.PushSubscriptionHash = sub.Hash
+				if _, err := conn.NewInsert().Model(sub.Keys).Exec(ctx); err != nil {
+					t.Fatalf("TestHandlePush err = %v, wantErr = %v", err, nil)
+				}
 			}
 
 			applicationServer = httptest.NewServer(http.HandlerFunc(HandlePush))
@@ -336,7 +361,7 @@ AwEHoUQDQgAE06wJJOQ3HWq9+MoyF4THhhV83ca/GdmkQ562OfZiisuu6/latYaX
 			query.Add("id", tt.params.RecipientId)
 
 			if tt.params.WithWebPushParams == nil {
-				tt.params.WithWebPushParams = &webpush.WithWebPushParams{}
+				tt.params.WithWebPushParams = &request.WithWebPushParams{}
 			}
 
 			// TODO: remove, once auth is implemented

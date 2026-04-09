@@ -1,6 +1,8 @@
+/.vscode
 functions/
 public/
 deno.lock
+coverage.html
 
 # Created by https://www.toptal.com/developers/gitignore/api/go,vercel,node
 # Edit at https://www.toptal.com/developers/gitignore?templates=go,vercel,node

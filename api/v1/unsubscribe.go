@@ -8,7 +8,9 @@ import (
 
 	api_utils "github.com/saschazar21/go-web-push-server/api/_utils"
 	"github.com/saschazar21/go-web-push-server/auth"
-	"github.com/saschazar21/go-web-push-server/webpush"
+	"github.com/saschazar21/go-web-push-server/db"
+	"github.com/saschazar21/go-web-push-server/errors"
+	"github.com/saschazar21/go-web-push-server/models"
 	"github.com/uptrace/bun"
 )
 
@@ -36,7 +38,7 @@ func HandleUnsubscribe(w http.ResponseWriter, r *http.Request) {
 
 	var recipientId string
 	if recipientId, err = decodeUnsubscribeRecipient(r); err != nil {
-		webpush.WriteResponseError(w, err)
+		errors.WriteResponseError(w, err)
 		return
 	}
 
@@ -44,7 +46,7 @@ func HandleUnsubscribe(w http.ResponseWriter, r *http.Request) {
 		recipientParams, err := api_utils.DecodeRecipientParams(r)
 
 		if err != nil {
-			webpush.WriteResponseError(w, err)
+			errors.WriteResponseError(w, err)
 			return
 		}
 
@@ -53,7 +55,7 @@ func HandleUnsubscribe(w http.ResponseWriter, r *http.Request) {
 
 	var clientId string
 	if clientId, err = auth.HandleBasicAuth(r); err != nil {
-		webpush.WriteResponseError(w, err)
+		errors.WriteResponseError(w, err)
 		return
 	}
 
@@ -62,53 +64,53 @@ func HandleUnsubscribe(w http.ResponseWriter, r *http.Request) {
 			http.CanonicalHeaderKey("allow"): []string{http.MethodDelete},
 		}
 
-		webpush.WriteResponseError(w, webpush.NewResponseError(webpush.METHOD_NOT_ALLOWED_ERROR, http.StatusMethodNotAllowed, headers))
+		errors.WriteResponseError(w, errors.NewResponseError(errors.METHOD_NOT_ALLOWED_ERROR, http.StatusMethodNotAllowed, headers))
 		return
 	}
 
-	db, err := webpush.ConnectToDatabase()
+	conn, err := db.Connect()
 
 	if err != nil {
 		log.Println(err)
 
-		webpush.WriteResponseError(w, err)
+		errors.WriteResponseError(w, err)
 		return
 	}
 
-	defer db.Close()
+	defer conn.Close()
 
 	ctx := r.Context()
 
 	var exists bool
-	if exists, err = webpush.HasExistingSubscriptionsByClient(ctx, db, clientId); err != nil || !exists {
+	if exists, err = models.HasExistingSubscriptionsByClientId(ctx, conn, clientId); err != nil || !exists {
 		if err != nil {
 			log.Println(err)
 
-			webpush.WriteResponseError(w, err)
+			errors.WriteResponseError(w, err)
 			return
 		}
 
-		payload := webpush.NewErrorResponse(http.StatusNotFound, fmt.Sprintf("no subscriptions found for client ID %s", clientId))
+		payload := errors.NewErrorResponse(http.StatusNotFound, fmt.Sprintf("no subscriptions found for client ID %s", clientId))
 
-		webpush.WriteResponseError(w, webpush.NewResponseError(payload, http.StatusNotFound))
+		errors.WriteResponseError(w, errors.NewResponseError(payload, http.StatusNotFound))
 		return
 	}
 
 	var tx bun.Tx
-	tx, err = db.BeginTx(ctx, &sql.TxOptions{})
+	tx, err = conn.BeginTx(ctx, &sql.TxOptions{})
 
 	if err != nil {
 		log.Println(err)
 
-		webpush.WriteResponseError(w, err)
+		errors.WriteResponseError(w, err)
 		return
 	}
 
 	if recipientId == "" {
-		if err = webpush.DeleteSubscriptionsByClient(ctx, tx, clientId); err != nil {
+		if err = models.DeleteSubscriptionsByClientId(ctx, tx, clientId); err != nil {
 			log.Println(err)
 
-			webpush.WriteResponseError(w, err)
+			errors.WriteResponseError(w, err)
 			tx.Rollback()
 			return
 		}
@@ -119,10 +121,10 @@ func HandleUnsubscribe(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 
-	if err = webpush.DeleteSubscriptionsByClientAndRecipient(ctx, tx, clientId, recipientId); err != nil {
+	if err = models.DeleteSubscriptionsByClientIdAndRecipientId(ctx, tx, clientId, recipientId); err != nil {
 		log.Println(err)
 
-		webpush.WriteResponseError(w, err)
+		errors.WriteResponseError(w, err)
 		tx.Rollback()
 		return
 	}

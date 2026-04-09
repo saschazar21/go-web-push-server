@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"regexp"
 
-	"github.com/saschazar21/go-web-push-server/webpush"
+	"github.com/saschazar21/go-web-push-server/errors"
 )
 
 func HandleURLRegex(r *http.Request, pattern string) (values []string, names []string, err error) {
@@ -14,7 +14,7 @@ func HandleURLRegex(r *http.Request, pattern string) (values []string, names []s
 		log.Println(err)
 		log.Printf("invalid pattern %s\n", pattern)
 
-		err = webpush.NewResponseError(webpush.INTERNAL_SERVER_ERROR, http.StatusInternalServerError)
+		err = errors.NewResponseError(errors.INTERNAL_SERVER_ERROR, http.StatusInternalServerError)
 		return
 	}
 

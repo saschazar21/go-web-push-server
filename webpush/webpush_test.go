@@ -9,6 +9,10 @@ import (
 	"testing"
 	"time"
 
+	"github.com/saschazar21/go-web-push-server/models"
+	"github.com/saschazar21/go-web-push-server/request"
+	webpush_test "github.com/saschazar21/go-web-push-server/test"
+	"github.com/saschazar21/go-web-push-server/utils"
 	"github.com/stretchr/testify/assert"
 )
 
@@ -30,7 +34,7 @@ func testDecodePrivateKey(enc string) (privKey *ecdh.PrivateKey, err error) {
 
 // fixtures taken from Appendix A. of https://datatracker.ietf.org/doc/rfc8291/
 func TestWebPushFixtures(t *testing.T) {
-	t.Setenv(SKIP_PADDING_ENV, "true") // needed, because RFC8291 values are unpadded
+	t.Setenv(utils.SKIP_PADDING_ENV, "true") // needed, because RFC8291 values are unpadded
 
 	var errMsg = "TestWebPush err = %v, wantErr = %v"
 
@@ -69,11 +73,17 @@ func TestWebPushFixtures(t *testing.T) {
 		privKey         *ecdh.PrivateKey
 		prkBuf          []byte
 		resultBuf       []byte
-		saltBuf         []byte
+		saltBuf         [SALT_SIZE]byte
+		saltDec         []byte
 		sharedSecretBuf []byte
 	)
 
-	if clientPubKey, err = decodePublicKey(clientKey); err != nil {
+	plainTextClientKey, err := base64.RawURLEncoding.DecodeString(clientKey)
+	if err != nil {
+		t.Fatalf("failed to decode client public key: %v", err)
+	}
+
+	if clientPubKey, err = decodePublicKey(plainTextClientKey); err != nil {
 		t.Errorf(errMsg, err, nil)
 	}
 
@@ -81,7 +91,11 @@ func TestWebPushFixtures(t *testing.T) {
 		t.Errorf(errMsg, err, nil)
 	}
 
-	pubKeyCmp, _ := decodePublicKey(publicKey)
+	plainTextPublicKey, err := base64.RawURLEncoding.DecodeString(publicKey)
+	if err != nil {
+		t.Fatalf("failed to decode public key: %v", err)
+	}
+	pubKeyCmp, _ := decodePublicKey(plainTextPublicKey)
 
 	assert.Equal(t, pubKeyCmp, privKey.PublicKey())
 
@@ -89,15 +103,17 @@ func TestWebPushFixtures(t *testing.T) {
 		t.Errorf(errMsg, err, nil)
 	}
 
-	if saltBuf, err = base64.RawURLEncoding.DecodeString(salt); err != nil {
+	if saltDec, err = base64.RawURLEncoding.DecodeString(salt); err != nil {
 		t.Errorf(errMsg, err, nil)
 	}
 
+	copy(saltBuf[:], saltDec)
+
 	p := &webpushDetails{
-		authSecretBuf,
-		clientPubKey,
-		privKey,
-		saltBuf,
+		authSecret: authSecretBuf,
+		clientKey:  clientPubKey,
+		privateKey: privKey,
+		salt:       saltBuf,
 	}
 
 	if sharedSecretBuf, err = p.generateSharedSecret(); err != nil {
@@ -141,11 +157,11 @@ func TestWebPushFixtures(t *testing.T) {
 	assert.Equal(t, nonce, nonceEnc)
 
 	push := &WebPush{
-		cekBuf,
-		"",
-		nonceBuf,
-		privKey.PublicKey(),
-		saltBuf,
+		CEK:       cekBuf,
+		Endpoint:  "",
+		Nonce:     nonceBuf,
+		PublicKey: privKey.PublicKey(),
+		Salt:      saltBuf,
 	}
 
 	headerBuf := push.generateEncryptionContentCodingHeader()
@@ -170,24 +186,43 @@ func TestWebPushFixtures(t *testing.T) {
 }
 
 func TestWebPush(t *testing.T) {
-	t.Setenv(VAPID_EXPIRY_DURATION_ENV, "300")
-	t.Setenv(VAPID_PRIVATE_KEY_ENV, `
+	t.Setenv(utils.VAPID_EXPIRY_DURATION_ENV, "300")
+	t.Setenv(utils.VAPID_PRIVATE_KEY_ENV, `
 -----BEGIN PRIVATE KEY-----
 MEECAQAwEwYHKoZIzj0CAQYIKoZIzj0DAQcEJzAlAgEBBCCFZOAAzpzloIIUnRsT
 MK468C66gOKehSQqxUQ8+HCI/g==
 -----END PRIVATE KEY-----	
 `)
-	t.Setenv(VAPID_SUBJECT_ENV, "test@example.com")
+	t.Setenv(utils.VAPID_SUBJECT_ENV, "test@example.com")
 
-	testServer := httptest.NewServer(http.HandlerFunc(handleRequest))
+	testServer := httptest.NewServer(http.HandlerFunc(webpush_test.EchoHeaders))
 
-	defer func() {
+	t.Cleanup(func() {
 		testServer.Close()
-	}()
+	})
+
+	var (
+		authSecret = "BTBZMqHH6r4Tts7J_aSIgg"
+		clientKey  = "BCVxsr7N_eNgVRqvHtD0zTZsEc6-VV-JvLexhqUzORcxaOzi6-AYWXvTBHm4bjyPjs7Vd8pZGH6SRpkNtoIAiw4"
+
+		emptyBuffer     = make([]byte, 0)
+		timestamp       = time.Now().Add(time.Hour)
+		invalidEndpoint = "htp://push.example"
+	)
+
+	decodedP256DH, err := base64.RawURLEncoding.DecodeString(clientKey)
+	if err != nil {
+		t.Fatalf("failed to decode p256dh key: %v", err)
+	}
+
+	decodedAuthSecret, err := base64.RawURLEncoding.DecodeString(authSecret)
+	if err != nil {
+		t.Fatalf("failed to decode auth secret: %v", err)
+	}
 
 	type test struct {
 		name         string
-		subscription *PushSubscription
+		subscription *models.PushSubscription
 		wantErr      bool
 		wantReqErr   bool
 	}
@@ -195,12 +230,12 @@ MK468C66gOKehSQqxUQ8+HCI/g==
 	tests := []test{
 		{
 			"validates",
-			&PushSubscription{
-				Endpoint:       testServer.URL,
-				ExpirationTime: &EpochMillis{time.Time(time.Now().Add(time.Hour))},
-				Keys: &pushSubscriptionKeys{
-					P256DH: "BPZ_GnkGFYfUcY0D0yMWcAQIuvQfV5tSw_dd7iIQktNR1dhdDflA1eQyJT-0ZSwpDO43mNbBwogEMTh7TCSkuP0",
-					Auth:   "DGv6ra1nlYgDCS1FRnbzlw",
+			&models.PushSubscription{
+				Endpoint:       (*utils.EncryptedString)(&testServer.URL),
+				ExpirationTime: (*utils.EpochMillis)(&timestamp),
+				Keys: &models.SubscriptionKeys{
+					P256DH:     (*utils.EncryptedBytes)(&decodedP256DH),
+					AuthSecret: (*utils.EncryptedBytes)(&decodedAuthSecret),
 				},
 			},
 			false,
@@ -208,12 +243,12 @@ MK468C66gOKehSQqxUQ8+HCI/g==
 		},
 		{
 			"fails at malformatted endpoint",
-			&PushSubscription{
-				Endpoint:       "htp://push.example",
-				ExpirationTime: &EpochMillis{time.Time(time.Now().Add(time.Hour))},
-				Keys: &pushSubscriptionKeys{
-					P256DH: "BPZ_GnkGFYfUcY0D0yMWcAQIuvQfV5tSw_dd7iIQktNR1dhdDflA1eQyJT-0ZSwpDO43mNbBwogEMTh7TCSkuP0",
-					Auth:   "DGv6ra1nlYgDCS1FRnbzlw",
+			&models.PushSubscription{
+				Endpoint:       (*utils.EncryptedString)(&invalidEndpoint),
+				ExpirationTime: (*utils.EpochMillis)(&timestamp),
+				Keys: &models.SubscriptionKeys{
+					P256DH:     (*utils.EncryptedBytes)(&decodedP256DH),
+					AuthSecret: (*utils.EncryptedBytes)(&decodedAuthSecret),
 				},
 			},
 			false,
@@ -221,25 +256,12 @@ MK468C66gOKehSQqxUQ8+HCI/g==
 		},
 		{
 			"fails at malformatted public key",
-			&PushSubscription{
-				Endpoint:       testServer.URL,
-				ExpirationTime: &EpochMillis{time.Time(time.Now().Add(time.Hour))},
-				Keys: &pushSubscriptionKeys{
-					P256DH: "BPZ_GnkGFYfUcY0D0yMWcAQIuvQfV5tSw_dd7iIQktNR1dhdDflA1eQyJT-0ZSwpDO43mNbBwogEMTh7TC",
-					Auth:   "DGv6ra1nlYgDCS1FRnbzlw",
-				},
-			},
-			true,
-			false,
-		},
-		{
-			"fails at malformatted auth secret",
-			&PushSubscription{
-				Endpoint:       testServer.URL,
-				ExpirationTime: &EpochMillis{time.Time(time.Now().Add(time.Hour))},
-				Keys: &pushSubscriptionKeys{
-					P256DH: "BPZ_GnkGFYfUcY0D0yMWcAQIuvQfV5tSw_dd7iIQktNR1dhdDflA1eQyJT-0ZSwpDO43mNbBwogEMTh7TCSkuP0",
-					Auth:   "DGv6ra1nlYgDCS1FRnbzlw153",
+			&models.PushSubscription{
+				Endpoint:       (*utils.EncryptedString)(&testServer.URL),
+				ExpirationTime: (*utils.EpochMillis)(&timestamp),
+				Keys: &models.SubscriptionKeys{
+					P256DH:     (*utils.EncryptedBytes)(&emptyBuffer),
+					AuthSecret: (*utils.EncryptedBytes)(&decodedAuthSecret),
 				},
 			},
 			true,
@@ -260,7 +282,7 @@ MK468C66gOKehSQqxUQ8+HCI/g==
 
 			if err == nil {
 
-				if res, err = p.Send([]byte("hello, world"), &WithWebPushParams{TTL: 300}); (err != nil) != tt.wantReqErr {
+				if res, err = p.Send([]byte("hello, world"), &request.WithWebPushParams{TTL: 300}); (err != nil) != tt.wantReqErr {
 					t.Errorf("TestWebPush err = %v, wantErr = %v", err, tt.wantErr)
 				}
 
@@ -269,7 +291,6 @@ MK468C66gOKehSQqxUQ8+HCI/g==
 
 					assert.NotNil(t, res.Header.Get("Authorization"))
 					assert.Equal(t, "aes128gcm", res.Header.Get("Content-Encoding"))
-					assert.Regexp(t, `^salt=[A-Za-z0-9-_]+$`, res.Header.Get("Encryption"))
 				}
 
 			}

@@ -6,20 +6,25 @@ import (
 	"crypto/ecdh"
 	"crypto/rand"
 	"crypto/sha256"
-	"encoding/base64"
 	"fmt"
 	"log"
 	"net/http"
 	"os"
 
+	"github.com/saschazar21/go-web-push-server/errors"
+	"github.com/saschazar21/go-web-push-server/models"
+	"github.com/saschazar21/go-web-push-server/request"
+	"github.com/saschazar21/go-web-push-server/utils"
+	"github.com/saschazar21/go-web-push-server/vapid"
 	"golang.org/x/crypto/hkdf"
 )
 
 const (
-	CEK_SIZE   = 16
-	IKM_SIZE   = 32
-	NONCE_SIZE = 12
-	SALT_SIZE  = 16
+	CEK_SIZE    = 16
+	IKM_SIZE    = 32
+	NONCE_SIZE  = 12
+	RECORD_SIZE = 4
+	SALT_SIZE   = 16
 
 	MAX_PAYLOAD_SIZE   = 4096
 	MAX_PLAINTEXT_SIZE = 3993 // see https://datatracker.ietf.org/doc/html/rfc8291/#section-4
@@ -30,21 +35,21 @@ type WebPush struct {
 	Endpoint  string
 	Nonce     []byte
 	PublicKey *ecdh.PublicKey
-	Salt      []byte
+	Salt      [SALT_SIZE]byte
 }
 
 func (p *WebPush) encrypt(payload []byte) (buf []byte, err error) {
 	buf = payload
 
 	if len(buf) > MAX_PLAINTEXT_SIZE {
-		errorPayload := NewErrorResponse(http.StatusRequestEntityTooLarge, "Push message body is too large", fmt.Sprintf("For compatibility reasons, the push message body must not exceed %d bytes.", MAX_PLAINTEXT_SIZE))
+		errorPayload := errors.NewErrorResponse(http.StatusRequestEntityTooLarge, "Push message body is too large", fmt.Sprintf("For compatibility reasons, the push message body must not exceed %d bytes.", MAX_PLAINTEXT_SIZE))
 
-		return nil, NewResponseError(errorPayload, http.StatusRequestEntityTooLarge)
+		return nil, errors.NewResponseError(errorPayload, http.StatusRequestEntityTooLarge)
 	}
 
 	padding := make([]byte, MAX_PLAINTEXT_SIZE-len(buf))
 
-	if os.Getenv(SKIP_PADDING_ENV) != "" {
+	if os.Getenv(utils.SKIP_PADDING_ENV) != "" {
 		padding = make([]byte, 0)
 	}
 
@@ -54,13 +59,13 @@ func (p *WebPush) encrypt(payload []byte) (buf []byte, err error) {
 	var block cipher.Block
 
 	if block, err = aes.NewCipher(p.CEK); err != nil {
-		return nil, NewResponseError(INTERNAL_SERVER_ERROR, http.StatusInternalServerError)
+		return nil, errors.NewResponseError(errors.INTERNAL_SERVER_ERROR, http.StatusInternalServerError)
 	}
 
 	var gcm cipher.AEAD
 
 	if gcm, err = cipher.NewGCM(block); err != nil {
-		return nil, NewResponseError(INTERNAL_SERVER_ERROR, http.StatusInternalServerError)
+		return nil, errors.NewResponseError(errors.INTERNAL_SERVER_ERROR, http.StatusInternalServerError)
 	}
 
 	enc := gcm.Seal(buf[:0], p.Nonce, buf, nil)
@@ -70,11 +75,11 @@ func (p *WebPush) encrypt(payload []byte) (buf []byte, err error) {
 
 // https://datatracker.ietf.org/doc/html/rfc8188#section-2.1
 func (p *WebPush) generateEncryptionContentCodingHeader() (header []byte) {
-	rs := []byte{0x00, 0x00, 0x10, 0x00} // 4096
-	keyid := p.PublicKey.Bytes()
-	idlen := byte(len(keyid)) // 56
+	rs := [RECORD_SIZE]byte{0x00, 0x00, 0x10, 0x00} // 4096 bytes, see https://datatracker.ietf.org/doc/html/rfc8291#section-4
+	keyid := p.PublicKey.Bytes()                    // 65 bytes uncompressed public key format (0x04 || X || Y)
+	idlen := byte(len(keyid))                       // 65
 
-	header = append(p.Salt, rs...)
+	header = append(p.Salt[:], rs[:]...)
 	header = append(header, idlen)
 	header = append(header, keyid...)
 
@@ -93,22 +98,22 @@ func (p *WebPush) Encrypt(payload []byte) (buf []byte, err error) {
 	return append(buf, cipher...), nil
 }
 
-func (p *WebPush) Send(payload []byte, params *WithWebPushParams) (res *http.Response, err error) {
+func (p *WebPush) Send(payload []byte, params *request.WithWebPushParams) (res *http.Response, err error) {
 	var buf []byte
 
 	if buf, err = p.Encrypt(payload); err != nil {
 		return
 	}
 
-	req := WebPushRequest{
-		p.Endpoint,
-		buf,
-		params,
-		&WithSalt{
-			p.Salt,
+	req := request.WebPushRequest{
+		Endpoint:          p.Endpoint,
+		Payload:           buf,
+		WithWebPushParams: params,
+		WithSalt: &request.WithSalt{
+			Salt: p.Salt[:],
 		},
-		&WithPublicKey{
-			p.PublicKey,
+		WithPublicKey: &request.WithPublicKey{
+			PublicKey: p.PublicKey,
 		},
 	}
 
@@ -119,7 +124,7 @@ type webpushDetails struct {
 	authSecret []byte
 	clientKey  *ecdh.PublicKey
 	privateKey *ecdh.PrivateKey
-	salt       []byte
+	salt       [16]byte
 }
 
 func (p *webpushDetails) generateInputKeyingMaterial() (ikm []byte, err error) {
@@ -139,7 +144,7 @@ func (p *webpushDetails) generateInputKeyingMaterial() (ikm []byte, err error) {
 	if ikm, err = deriveKey(sharedSecret, p.authSecret, keyInfo, IKM_SIZE); err != nil {
 		log.Println(err)
 
-		return ikm, NewResponseError(INTERNAL_SERVER_ERROR, http.StatusInternalServerError)
+		return ikm, errors.NewResponseError(errors.INTERNAL_SERVER_ERROR, http.StatusInternalServerError)
 	}
 
 	return
@@ -152,7 +157,7 @@ func (p *webpushDetails) generatePseudoRandomKey() (prk []byte, err error) {
 		return
 	}
 
-	prk = hkdf.Extract(sha256.New, ikm, p.salt)
+	prk = hkdf.Extract(sha256.New, ikm, p.salt[:])
 
 	return
 }
@@ -161,7 +166,7 @@ func (p *webpushDetails) generateSharedSecret() (buf []byte, err error) {
 	if buf, err = p.privateKey.ECDH(p.clientKey); err != nil {
 		log.Println(err)
 
-		return buf, NewResponseError(INTERNAL_SERVER_ERROR, http.StatusInternalServerError)
+		return buf, errors.NewResponseError(errors.INTERNAL_SERVER_ERROR, http.StatusInternalServerError)
 	}
 
 	return
@@ -178,7 +183,7 @@ func generateContentEncryptionKey(prk []byte) (cek []byte, err error) {
 		log.Println("generating CEK failed:")
 		log.Println(err)
 
-		return nil, NewResponseError(INTERNAL_SERVER_ERROR, http.StatusInternalServerError)
+		return nil, errors.NewResponseError(errors.INTERNAL_SERVER_ERROR, http.StatusInternalServerError)
 	}
 
 	return
@@ -195,16 +200,16 @@ func generateNonce(prk []byte) (nonce []byte, err error) {
 		log.Println("generating Nonce failed:")
 		log.Println(err)
 
-		return nil, NewResponseError(INTERNAL_SERVER_ERROR, http.StatusInternalServerError)
+		return nil, errors.NewResponseError(errors.INTERNAL_SERVER_ERROR, http.StatusInternalServerError)
 	}
 
 	return
 }
 
-func generateSalt() (salt []byte, err error) {
-	salt = make([]byte, SALT_SIZE)
+func generateSalt() (salt [16]byte, err error) {
+	salt = [SALT_SIZE]byte{}
 
-	if _, err = rand.Read(salt); err != nil {
+	if _, err = rand.Read(salt[:]); err != nil {
 		log.Println(err)
 
 		return salt, fmt.Errorf("failed to generate salt")
@@ -214,38 +219,39 @@ func generateSalt() (salt []byte, err error) {
 }
 
 func generatePrivateKey() (key *ecdh.PrivateKey, err error) {
-	var k *vapidKey
-
-	if k, err = GenerateVapidKey(); err != nil {
+	k, err := vapid.GenerateVapidKey()
+	if err != nil {
 		log.Println(err)
 
-		return key, NewResponseError(INTERNAL_SERVER_ERROR, http.StatusInternalServerError)
+		return key, errors.NewResponseError(errors.INTERNAL_SERVER_ERROR, http.StatusInternalServerError)
 	}
 
 	if key, err = k.PrivateKey.ECDH(); err != nil {
 		log.Println(err)
 
-		return key, NewResponseError(INTERNAL_SERVER_ERROR, http.StatusInternalServerError)
+		return key, errors.NewResponseError(errors.INTERNAL_SERVER_ERROR, http.StatusInternalServerError)
 	}
 
 	return
 }
 
-func NewWebPush(sub *PushSubscription) (p *WebPush, err error) {
-	var authSecret []byte
+func NewWebPush(sub *models.PushSubscription) (p *WebPush, err error) {
+	if sub.Endpoint == nil {
+		log.Printf("No endpoint provided for subscription %s\n", sub)
+		return p, errors.NewResponseError(errors.INTERNAL_SERVER_ERROR, http.StatusBadRequest)
+	}
 
-	if authSecret, err = base64.RawURLEncoding.DecodeString(sub.Keys.Auth); err != nil {
-		log.Println(err)
-
-		return p, NewResponseError(INTERNAL_SERVER_ERROR, http.StatusInternalServerError)
+	if sub.Keys == nil || sub.Keys.AuthSecret == nil || sub.Keys.P256DH == nil {
+		log.Printf("No keys provided for subscription %s\n", sub)
+		return p, errors.NewResponseError(errors.INTERNAL_SERVER_ERROR, http.StatusBadRequest)
 	}
 
 	var clientKey *ecdh.PublicKey
 
-	if clientKey, err = decodePublicKey(sub.Keys.P256DH); err != nil {
+	if clientKey, err = decodePublicKey(*sub.Keys.P256DH); err != nil {
 		log.Println(err)
 
-		return p, NewResponseError(INTERNAL_SERVER_ERROR, http.StatusInternalServerError)
+		return p, errors.NewResponseError(errors.INTERNAL_SERVER_ERROR, http.StatusInternalServerError)
 	}
 
 	var privateKey *ecdh.PrivateKey
@@ -254,19 +260,19 @@ func NewWebPush(sub *PushSubscription) (p *WebPush, err error) {
 		return
 	}
 
-	var salt []byte
+	var salt [16]byte
 
 	if salt, err = generateSalt(); err != nil {
 		log.Println(err)
 
-		return p, NewResponseError(INTERNAL_SERVER_ERROR, http.StatusInternalServerError)
+		return p, errors.NewResponseError(errors.INTERNAL_SERVER_ERROR, http.StatusInternalServerError)
 	}
 
 	details := webpushDetails{
-		authSecret,
-		clientKey,
-		privateKey,
-		salt,
+		authSecret: *sub.Keys.AuthSecret,
+		clientKey:  clientKey,
+		privateKey: privateKey,
+		salt:       salt,
 	}
 
 	var cek, nonce, prk []byte
@@ -284,10 +290,10 @@ func NewWebPush(sub *PushSubscription) (p *WebPush, err error) {
 	}
 
 	return &WebPush{
-		cek,
-		sub.Endpoint,
-		nonce,
-		privateKey.PublicKey(),
-		salt,
+		CEK:       cek,
+		Endpoint:  string(*sub.Endpoint),
+		Nonce:     nonce,
+		PublicKey: privateKey.PublicKey(),
+		Salt:      salt,
 	}, err
 }

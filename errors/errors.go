@@ -1,4 +1,4 @@
-package webpush
+package errors
 
 import (
 	"encoding/json"
@@ -6,6 +6,8 @@ import (
 	"log"
 	"net/http"
 	"strings"
+
+	"github.com/saschazar21/go-web-push-server/utils"
 )
 
 var (
@@ -78,10 +80,10 @@ func (res *ErrorResponse) String() string {
 }
 
 func (res *ErrorResponse) Validate() (err error) {
-	if err = CustomValidateStruct(res); err != nil {
+	if err = utils.CustomValidateStruct(res); err != nil {
 		log.Println(err)
 
-		return NewResponseError(INTERNAL_SERVER_ERROR, http.StatusInternalServerError, http.Header{http.CanonicalHeaderKey("content-type"): {JSON_API}})
+		return NewResponseError(INTERNAL_SERVER_ERROR, http.StatusInternalServerError, http.Header{http.CanonicalHeaderKey("content-type"): {utils.JSON_API}})
 	}
 
 	return
@@ -126,10 +128,10 @@ func (err ResponseError) Write(w http.ResponseWriter) {
 	w.Write([]byte(err.Body))
 }
 
-func NewResponseError(contents StringerValidator, status int, headers ...http.Header) (err error) {
+func NewResponseError(contents utils.StringerValidator, status int, headers ...http.Header) (err error) {
 	if len(headers) < 1 {
 		headers = []http.Header{
-			{http.CanonicalHeaderKey("content-type"): {JSON_API}},
+			{http.CanonicalHeaderKey("content-type"): {utils.JSON_API}},
 		}
 	}
 
@@ -145,7 +147,7 @@ func NewResponseError(contents StringerValidator, status int, headers ...http.He
 		contents = INTERNAL_SERVER_ERROR
 		status = http.StatusInternalServerError
 		headers = []http.Header{
-			{http.CanonicalHeaderKey("content-type"): {JSON_API}},
+			{http.CanonicalHeaderKey("content-type"): {utils.JSON_API}},
 		}
 	}
 

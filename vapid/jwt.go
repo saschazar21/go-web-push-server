@@ -1,15 +1,16 @@
-package webpush
+package vapid
 
 import (
 	"time"
 
 	"github.com/golang-jwt/jwt/v5"
+	"github.com/saschazar21/go-web-push-server/utils"
 )
 
 type vapidClaims struct {
-	Sub string `json:"sub" validate:"mailto"`
-	Aud string `json:"aud" validate:"origin"`
-	Exp *Epoch `json:"exp" validate:"epoch-gt-now"`
+	Sub string       `json:"sub" validate:"mailto"`
+	Aud string       `json:"aud" validate:"origin"`
+	Exp *utils.Epoch `json:"exp" validate:"epoch-gt-now"`
 }
 
 func (c *vapidClaims) GetExpirationTime() (*jwt.NumericDate, error) {
@@ -20,7 +21,7 @@ func (c *vapidClaims) GetExpirationTime() (*jwt.NumericDate, error) {
 	}
 
 	return &jwt.NumericDate{
-		Time: c.Exp.Time,
+		Time: time.Time(*c.Exp),
 	}, nil
 }
 
@@ -50,5 +51,5 @@ func (c *vapidClaims) GetAudience() (jwt.ClaimStrings, error) {
 }
 
 func (c *vapidClaims) Validate() (err error) {
-	return CustomValidateStruct(c)
+	return utils.CustomValidateStruct(c)
 }

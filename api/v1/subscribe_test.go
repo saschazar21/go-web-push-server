@@ -10,7 +10,7 @@ import (
 
 	"github.com/saschazar21/go-web-push-server/auth"
 	webpush_test "github.com/saschazar21/go-web-push-server/test"
-	"github.com/saschazar21/go-web-push-server/webpush"
+	"github.com/saschazar21/go-web-push-server/utils"
 	"gotest.tools/v3/assert"
 )
 
@@ -129,7 +129,7 @@ func TestHandleSubscribe(t *testing.T) {
 			}
 
 			req, _ := http.NewRequest(tt.method, server.URL, bytes.NewBuffer(buf))
-			req.Header.Add("content-type", webpush.APPLICATION_JSON)
+			req.Header.Add("content-type", utils.APPLICATION_JSON)
 
 			clientId := ""
 			if recipient, ok := tt.payload.(recipient); ok {
@@ -146,6 +146,72 @@ func TestHandleSubscribe(t *testing.T) {
 			}
 
 			assert.Equal(t, tt.wantStatus, res.StatusCode)
+		})
+	}
+}
+
+func TestRawHandleSubscribe(t *testing.T) {
+	basicAuthPassword := "123"
+	t.Setenv(auth.BASIC_AUTH_PASSWORD_ENV, basicAuthPassword)
+	t.Setenv("CWD", "../../")
+
+	ctx := context.Background()
+
+	container, err := webpush_test.CreateContainer(ctx, t)
+	if err != nil {
+		t.Fatalf("failed to create container: %v", err)
+	}
+
+	defer container.Terminate(ctx)
+
+	type testCase struct {
+		name       string
+		payload    string
+		wantErr    bool
+		wantStatus int
+	}
+
+	tests := []testCase{
+		{
+			name: "returns 201 Created for valid subscription request",
+			payload: `{
+				"clientId": "test client",
+				"id": "test user",
+				"subscription": {
+					"endpoint": "https://fcm.googleapis.com/fcm/send/fmgM63cKgX8:APA91bEOyZtNEbCNKUmekrYywm1pOuEcnA_-AnoYueOyLI0ysXzK9xC_Th64TzmX3PudWZBr1GRKN1erZ8yH4gjriAhRdUtmzxS4vSCXd8OXogy3X_iT2g4MFSZrrgg1aR6XBz_ZEQif",
+					"expirationTime": null,
+					"keys": {
+						"p256dh": "BDUNJTPVQKJSqsXKIf68MiXwxattZqUr_oVOYAxq4Yk1F7pdSsOTixT9SUyvnYQAD7Sgj7laojLUzI3jZoAT9jM",
+						"auth": "DfAUjwU7hg-vHYn68BropQ"
+					}
+				}
+			}`,
+			wantErr:    false,
+			wantStatus: http.StatusCreated,
+		},
+	}
+
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			server := httptest.NewServer(http.HandlerFunc(HandleSubscribe))
+
+			t.Cleanup(func() {
+				server.Close()
+			})
+
+			req, err := http.NewRequest(http.MethodPost, server.URL, bytes.NewBufferString(tc.payload))
+			if err != nil {
+				t.Fatalf("failed to create request: %v", err)
+			}
+			req.Header.Set("content-type", utils.APPLICATION_JSON)
+			req.SetBasicAuth("test client", basicAuthPassword)
+
+			res, err := http.DefaultClient.Do(req)
+			assert.Equal(t, tc.wantStatus, res.StatusCode)
+
+			if (err != nil) != tc.wantErr {
+				t.Fatalf("expected error: %v, got: %v", tc.wantErr, err)
+			}
 		})
 	}
 }

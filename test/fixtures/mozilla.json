@@ -1,0 +1,8 @@
+{
+  "endpoint": "https://updates.push.services.mozilla.com/wpush/v2/y3Z5b5Hp4AYGQ5MHq7RKKDwvTdBJKJXko6OXMZulGSGJ0CGOqfBw5zcluLebkWEW6-Lt0nZiBEMunz-SG7p68FYPbQMTMbiFoQ_vAABTTwpIe1rwGWE3k7Y1bO06NJ3A9mGxQt_laKfANVMS2CD1fQiW",
+  "expirationTime": 1779534729360,
+  "keys": {
+    "p256dh": "BCVxsr7N_eNgVRqvHtD0zTZsEc6-VV-JvLexhqUzORcxaOzi6-AYWXvTBHm4bjyPjs7Vd8pZGH6SRpkNtoIAiw4",
+    "auth": "BTBZMqHH6r4Tts7J_aSIgg"
+  }
+}

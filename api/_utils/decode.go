@@ -5,7 +5,7 @@ import (
 	"net/http"
 
 	"github.com/gorilla/schema"
-	"github.com/saschazar21/go-web-push-server/webpush"
+	"github.com/saschazar21/go-web-push-server/errors"
 )
 
 var decoder = schema.NewDecoder()
@@ -15,13 +15,13 @@ type recipientParams struct {
 }
 
 func DecodeRecipientParams(r *http.Request) (params *recipientParams, err error) {
-	params = new(recipientParams)
+	params = &recipientParams{}
 
 	decoder.IgnoreUnknownKeys(true)
 	if err = decoder.Decode(params, r.URL.Query()); err != nil {
 		log.Println(err)
 
-		err = webpush.NewResponseError(webpush.BAD_REQUEST_ERROR, http.StatusBadRequest)
+		err = errors.NewResponseError(errors.BAD_REQUEST_ERROR, http.StatusBadRequest)
 		return
 	}
 

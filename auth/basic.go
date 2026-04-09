@@ -5,7 +5,7 @@ import (
 	"net/http"
 	"os"
 
-	"github.com/saschazar21/go-web-push-server/webpush"
+	"github.com/saschazar21/go-web-push-server/errors"
 )
 
 func HandleBasicAuth(r *http.Request) (clientId string, err error) {
@@ -17,7 +17,7 @@ func HandleBasicAuth(r *http.Request) (clientId string, err error) {
 	if passwordEnv == "" {
 		log.Printf("missing environment variable %s\n", BASIC_AUTH_PASSWORD_ENV)
 
-		err = webpush.NewResponseError(webpush.INTERNAL_SERVER_ERROR, http.StatusInternalServerError)
+		err = errors.NewResponseError(errors.INTERNAL_SERVER_ERROR, http.StatusInternalServerError)
 		return
 	}
 
@@ -26,7 +26,7 @@ func HandleBasicAuth(r *http.Request) (clientId string, err error) {
 	if !ok || clientId == "" {
 		log.Println("missing basic authentication")
 
-		err = webpush.NewResponseError(UNAUTHORIZED_ERROR, http.StatusUnauthorized, http.Header{
+		err = errors.NewResponseError(UNAUTHORIZED_ERROR, http.StatusUnauthorized, http.Header{
 			http.CanonicalHeaderKey("WWW-Authenticate"): []string{"Basic realm=\"webpush\""},
 		})
 		return
@@ -35,7 +35,7 @@ func HandleBasicAuth(r *http.Request) (clientId string, err error) {
 	if password != passwordEnv {
 		log.Printf("invalid basic authentication: %s vs. %s\n", passwordEnv, password)
 
-		err = webpush.NewResponseError(FORBIDDEN_ERROR, http.StatusForbidden)
+		err = errors.NewResponseError(FORBIDDEN_ERROR, http.StatusForbidden)
 		return
 	}
 

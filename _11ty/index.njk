@@ -28,8 +28,17 @@ layout: default.njk
   <template x-if="!isDisabled && !isLoading && isSubscribed">
     <button class="push-button" type="button" @click="unsubscribe()" data-error>Unsubscribe</button>
   </template>
-  <br />
+  <br/>
   <span>Click the above button to enable push messages. You can revoke your subscription at any time by clicking "Unsubscribe".</span>
+
+  <template x-if="toast">
+    <div
+      role="alert"
+      x-text="toast"
+      x-transition.opacity.duration.300ms
+      class="toast"
+    ></div>
+  </template>
 </p>
 
 <p data-notification>

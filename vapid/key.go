@@ -1,4 +1,4 @@
-package webpush
+package vapid
 
 import (
 	"crypto/ecdsa"

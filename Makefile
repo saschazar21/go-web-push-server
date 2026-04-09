@@ -1,4 +1,4 @@
-.PHONY: test clean
+.PHONY: build build_website test clean
 
 build: build_website
 	sh -c ./build.sh
@@ -11,13 +11,14 @@ ifdef ENABLE_DEMO
 endif
 
 key:
-	go run cli/main.go
+	@go run cli/main.go
 
 test:
-	go test -coverprofile coverage.out ./...
-	
-coverage: test
-	go tool cover -html coverage.out
+	@echo "Running tests..."
+	@go test ./... -v -coverprofile=coverage.out -covermode=atomic
+	@go tool cover -func=coverage.out
+	@go tool cover -html=coverage.out -o coverage.html
+	@echo "Tests completed."
 
 clean:
 	rm -rf public
