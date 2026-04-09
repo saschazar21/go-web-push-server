@@ -53,8 +53,8 @@ func (p *WebPush) encrypt(payload []byte) (buf []byte, err error) {
 		padding = make([]byte, 0)
 	}
 
-	buf = append(buf, padding...)
 	buf = append(buf, 0x02)
+	buf = append(buf, padding...)
 
 	var block cipher.Block
 
